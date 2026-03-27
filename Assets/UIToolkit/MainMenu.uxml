@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UIToolkit/MainMenu.uss?fileID=7433441132597879392&amp;guid=aa6e9400bc81e7d4c9c41a09604b0e28&amp;type=3#MainMenu"/>
+    <ui:VisualElement name="menu-root" class="menu-root">
+        <ui:VisualElement name="menu-card" class="menu-card">
+            <ui:Label name="title" text="🎮  GAME ONLINE" class="menu-title"/>
+            <ui:Label name="subtitle" text="MULTIPLAYER  •  PHOTON FUSION 2" class="menu-subtitle"/>
+            <ui:VisualElement class="divider"/>
+            <ui:Label text="TÊN PHÒNG" class="field-label"/>
+            <ui:TextField name="room-input" value="Room01" class="room-input"/>
+            <ui:Button name="btn-join" text=" TẠO / VÀO PHÒNG" class="btn-primary"/>
+            <ui:Button name="btn-quit" text="THOÁT GAME" class="btn-secondary"/>
+            <ui:Label text="GAM302 ASSIGNMENT  •  2026" class="menu-footer"/>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
