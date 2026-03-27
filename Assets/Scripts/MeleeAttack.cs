@@ -15,9 +15,6 @@ public class MeleeAttack : NetworkBehaviour
     [Tooltip("Layer bị ảnh hưởng (để trống = tất cả)")]
     public LayerMask hitLayers = ~0;
 
-    [Header("VFX")]
-    [Tooltip("Particle effect khi trúng (optional)")]
-    public GameObject hitEffectPrefab;
 
     [Networked] private TickTimer _cooldown { get; set; }
 
@@ -65,10 +62,6 @@ public class MeleeAttack : NetworkBehaviour
 
             // Bỏ qua nếu trúng chính mình
             if (netObj != null && netObj.InputAuthority == Object.InputAuthority) return;
-
-            // Hiệu ứng trúng (spawn local — không cần network sync cho VFX)
-            if (hitEffectPrefab != null)
-                Instantiate(hitEffectPrefab, hit.point, Quaternion.LookRotation(-dir));
 
             Debug.Log($"[MeleeAttack] Trúng: {hit.collider.name}");
 

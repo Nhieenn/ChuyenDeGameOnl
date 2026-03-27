@@ -18,6 +18,7 @@ GameObject:
   - component: {fileID: 7784059209476987356}
   - component: {fileID: 7075992577207882010}
   - component: {fileID: 5498324589367948811}
+  - component: {fileID: 7366608216895575114}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -142,6 +143,7 @@ MonoBehaviour:
   - {fileID: 7784059209476987356}
   - {fileID: 7075992577207882010}
   - {fileID: 5498324589367948811}
+  - {fileID: 7366608216895575114}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &281850999114570431
 MonoBehaviour:
@@ -230,6 +232,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 524da42a2dc407c41a687ea3ef8ffdd0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimator
+--- !u!114 &7366608216895575114
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2493773470276657293}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d64b95f471227d74286c6d1c6c76aedf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HealthSystem
+  maxHealth: 100
+  _CurrentHealth: 100
+  hitEffectPrefab: {fileID: 0}
 --- !u!1001 &5355747187875320003
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -16,16 +16,35 @@ public class HealthSystem : NetworkBehaviour
     [Networked, OnChangedRender(nameof(OnHealthChanged))]
     public float CurrentHealth { get; set; }
 
-    [Header("Hit Effects")]
-    [Tooltip("Particle Effect khi bị đánh trúng")]
-    public GameObject hitEffectPrefab;
+
 
     public override void Spawned()
     {
-        // Khởi tạo máu đầy khi mới sinh ra
+        Debug.Log($"[HealthSystem] Player {Object.Id} Spawned. Tìm kiếm FloatingUIManager...");
+
         if (Object.HasStateAuthority)
         {
             CurrentHealth = maxHealth;
+        }
+
+        if (FloatingUIManager.Instance != null)
+        {
+            Debug.Log("[HealthSystem] OK - Đã thấy FloatingUIManager! Bắt đầu đăng ký.");
+            FloatingUIManager.Instance.RegisterPlayer(this);
+            FloatingUIManager.Instance.UpdateHealth(this, maxHealth, maxHealth);
+        }
+        else
+        {
+            Debug.LogError("[HealthSystem] LỖI: FloatingUIManager.Instance đang NULL! Bạn chưa gắn nó vào HUD hoặc chưa lưu Scene.");
+        }
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        // Xóa thanh máu khi nhân vật biến mất/chết vĩnh viễn
+        if (FloatingUIManager.Instance != null)
+        {
+            FloatingUIManager.Instance.UnregisterPlayer(this);
         }
     }
 
@@ -64,15 +83,20 @@ public class HealthSystem : NetworkBehaviour
     {
         Debug.Log($"[HealthSystem] Player {Object.Id} máu còn: {CurrentHealth}");
 
-        // 1. Cập nhật UI Thanh Máu (Sẽ làm ở bước sau)
-        // UpdateHealthBarUI();
-
-        // 2. Spawn hiệu ứng máu xịt (Chỉ spawn local để đỡ lag server)
-        if (hitEffectPrefab != null && CurrentHealth > 0 && CurrentHealth < maxHealth)
+        // 1. Cập nhật UI Thanh Máu Overlay (UI Toolkit)
+        if (FloatingUIManager.Instance != null)
         {
-            // Tạm thời spawn particle ở ngay bụng nhân vật
+            FloatingUIManager.Instance.UpdateHealth(this, CurrentHealth, maxHealth);
+        }
+
+        // 2. Spawn hiệu ứng máu xịt qua Hệ thống Tái chế (Object Pool)
+        if (CurrentHealth > 0 && CurrentHealth < maxHealth)
+        {
             Vector3 spawnPos = transform.position + Vector3.up * 1f;
-            Instantiate(hitEffectPrefab, spawnPos, Quaternion.identity);
+            if (HitEffectManager.Instance != null)
+            {
+                HitEffectManager.Instance.SpawnHitEffect(spawnPos);
+            }
         }
     }
 
