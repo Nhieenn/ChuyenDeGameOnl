@@ -11,10 +11,11 @@ public class HealthSystem : NetworkBehaviour
     [Header("Health Settings")]
     public float maxHealth = 100f;
 
-    // Biến máu được đồng bộ qua mạng. Bất cứ khi nào thay đổi, 
-    // tất cả người chơi đều tự động gọi hàm OnHealthChanged.
     [Networked, OnChangedRender(nameof(OnHealthChanged))]
     public float CurrentHealth { get; set; }
+
+    // Dùng biến local để so sánh lượng máu thay đổi nhằm kích hoạt tính năng "Đứng Hình" (Hit React)
+    private float _previousHealth;
 
 
 
@@ -26,6 +27,8 @@ public class HealthSystem : NetworkBehaviour
         {
             CurrentHealth = maxHealth;
         }
+
+        _previousHealth = maxHealth;
 
         if (FloatingUIManager.Instance != null)
         {
@@ -75,10 +78,6 @@ public class HealthSystem : NetworkBehaviour
         }
     }
 
-    /// <summary>
-    /// Được gọi TỰ ĐỘNG trên máy của TẤT CẢ mọi người khi CurrentHealth thay đổi.
-    /// Dùng chỗ này để cập nhật UI thanh máu và spawn hiệu ứng xịt máu.
-    /// </summary>
     private void OnHealthChanged()
     {
         Debug.Log($"[HealthSystem] Player {Object.Id} máu còn: {CurrentHealth}");
@@ -89,13 +88,28 @@ public class HealthSystem : NetworkBehaviour
             FloatingUIManager.Instance.UpdateHealth(this, CurrentHealth, maxHealth);
         }
 
-        // 2. Spawn hiệu ứng máu xịt qua Hệ thống Tái chế (Object Pool)
-        if (CurrentHealth > 0 && CurrentHealth < maxHealth)
+        // Tính lượng máu MẤT ĐI
+        float damageTaken = _previousHealth - CurrentHealth;
+        _previousHealth = CurrentHealth;
+
+        // Nếu thực sự BỊ TRỪ MÁU
+        if (damageTaken > 0)
         {
+            // 2. Chớp đỏ người (Damage Flash)
+            var flasher = GetComponent<DamageFlash>();
+            if (flasher != null)
+                flasher.Flash();
+
             Vector3 spawnPos = transform.position + Vector3.up * 1f;
+
+            // 3. Gọi VFX và Text từ Pool
             if (HitEffectManager.Instance != null)
             {
+                // Xịt tia nham thạch lửa
                 HitEffectManager.Instance.SpawnHitEffect(spawnPos);
+                
+                // Nảy con số sát thương (-10) lơ lửng trên đầu
+                HitEffectManager.Instance.SpawnDamageText(spawnPos + Vector3.up * 0.5f, damageTaken);
             }
         }
     }

@@ -767,6 +767,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HitEffectManager
   hitParticlePrefab: {fileID: 1327407057894053923, guid: 908cd11f14c69d947adf27c805069b80, type: 3}
+  damageTextPrefab: {fileID: 4729342036234111961, guid: 29cc5a2fd004c0b458ee67da02607ba5, type: 3}
 --- !u!4 &1221720024
 Transform:
   m_ObjectHideFlags: 0

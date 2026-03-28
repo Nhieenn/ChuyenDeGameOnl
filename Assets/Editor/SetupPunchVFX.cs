@@ -78,5 +78,34 @@ public class SetupPunchVFX
         // Báo kết quả
         Debug.Log($"[AntiGravity AI] ✅ Đã rèn xong 1 thanh gươm Vàng ở {path} ! Kéo thả ngay vào HitEffectManager để chiêm ngưỡng!");
     }
+
+    [MenuItem("AntiGravity/Tạo Chữ Nhảy Sát Thương (Floating Text)")]
+    public static void CreateFloatingText()
+    {
+        // Tạo GameObject với TextMeshPro
+        var go = new GameObject("DamageText_VFX");
+        var tmpro = go.AddComponent<TMPro.TextMeshPro>();
+        
+        tmpro.text = "-10";
+        tmpro.alignment = TMPro.TextAlignmentOptions.Center;
+        tmpro.fontSize = 5; // Text ngoài World Space cần font chữ bé và Transform Scale = 1
+        tmpro.color = new Color(1f, 0.2f, 0.2f, 1f); // Đỏ tươi
+        tmpro.fontStyle = TMPro.FontStyles.Bold;
+        
+        // Outline đen để dễ nhìn
+        tmpro.fontSharedMaterial.SetFloat(TMPro.ShaderUtilities.ID_OutlineWidth, 0.2f);
+        tmpro.fontSharedMaterial.SetColor(TMPro.ShaderUtilities.ID_OutlineColor, Color.black);
+
+        // Gắn script Animator & Pool
+        go.AddComponent<FloatingTextAnim>();
+
+        // Lưu
+        if (!System.IO.Directory.Exists("Assets/Prefabs")) System.IO.Directory.CreateDirectory("Assets/Prefabs");
+        string path = "Assets/Prefabs/DamageText_VFX.prefab";
+        PrefabUtility.SaveAsPrefabAsset(go, path);
+        Object.DestroyImmediate(go);
+
+        Debug.Log($"[AntiGravity AI] ✅ Đã rèn xong Chữ Bay Sát Thương tại {path} ! Kéo thả ngay vào Damage Text Prefab của HitEffectManager!");
+    }
 }
 #endif

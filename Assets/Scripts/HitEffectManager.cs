@@ -13,22 +13,36 @@ public class HitEffectManager : MonoBehaviour
     [Tooltip("Kéo Prefab hạt Particle của bạn vào đây")]
     public GameObject hitParticlePrefab;
 
+    [Tooltip("Kéo Prefab DamageText (Chữ nhảy sát thương) vào đây")]
+    public GameObject damageTextPrefab;
+
     // Sử dụng ObjectTool tích hợp sẵn của Unity (v2021+)
-    private ObjectPool<GameObject> _pool;
+    private ObjectPool<GameObject> _particlePool;
+    private ObjectPool<GameObject> _textPool;
 
     private void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
-        // Khởi tạo Pool
-        _pool = new ObjectPool<GameObject>(
+        // Khởi tạo Pool Hạt
+        _particlePool = new ObjectPool<GameObject>(
             createFunc: CreateParticle,
             actionOnGet: OnTakeParticle,
             actionOnRelease: OnReturnParticle,
             actionOnDestroy: Destroy,
             defaultCapacity: 10,
             maxSize: 100
+        );
+
+        // Khởi tạo Pool Chữ
+        _textPool = new ObjectPool<GameObject>(
+            createFunc: CreateDamageText,
+            actionOnGet: OnTakeText,
+            actionOnRelease: OnReturnText,
+            actionOnDestroy: Destroy,
+            defaultCapacity: 20,
+            maxSize: 200
         );
     }
 
@@ -37,7 +51,7 @@ public class HitEffectManager : MonoBehaviour
         var obj = Instantiate(hitParticlePrefab);
         // Gắn script tự động thu hồi vào Pool sau 1 giây
         var returner = obj.AddComponent<ReturnParticleToPool>();
-        returner.pool = _pool;
+        returner.pool = _particlePool;
         return obj;
     }
 
@@ -58,9 +72,37 @@ public class HitEffectManager : MonoBehaviour
     {
         if (hitParticlePrefab == null) return;
         
-        var obj = _pool.Get();
+        var obj = _particlePool.Get();
         obj.transform.position = position;
         obj.transform.rotation = Quaternion.identity;
+    }
+
+    // --- TEXT POOL LOGIC ---
+    private GameObject CreateDamageText()
+    {
+        var obj = Instantiate(damageTextPrefab);
+        var anim = obj.GetComponent<FloatingTextAnim>();
+        if (anim != null) anim.pool = _textPool;
+        return obj;
+    }
+
+    private void OnTakeText(GameObject obj) => obj.SetActive(true);
+    private void OnReturnText(GameObject obj) => obj.SetActive(false);
+
+    public void SpawnDamageText(Vector3 position, float damageAmount)
+    {
+        if (damageTextPrefab == null) return;
+
+        var obj = _textPool.Get();
+        // Nhích lên lệch Random 1 chút để các dòng máu không bị đè lên nhau nếu đấm liên tục
+        Vector3 offset = new Vector3(Random.Range(-0.5f, 0.5f), Random.Range(0, 0.5f), 0);
+        obj.transform.position = position + offset;
+
+        var anim = obj.GetComponent<FloatingTextAnim>();
+        if (anim != null)
+        {
+            anim.Setup($"-{damageAmount}", Color.red);
+        }
     }
 }
 

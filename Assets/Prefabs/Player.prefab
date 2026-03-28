@@ -19,6 +19,7 @@ GameObject:
   - component: {fileID: 7075992577207882010}
   - component: {fileID: 5498324589367948811}
   - component: {fileID: 7366608216895575114}
+  - component: {fileID: 2727513135730972857}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -219,7 +220,6 @@ MonoBehaviour:
   hitLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  hitEffectPrefab: {fileID: 0}
 --- !u!114 &5498324589367948811
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -246,7 +246,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HealthSystem
   maxHealth: 100
   _CurrentHealth: 100
-  hitEffectPrefab: {fileID: 0}
+--- !u!114 &2727513135730972857
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2493773470276657293}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 517145e12e0a2264baf021ee519fd6a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DamageFlash
+  flashColor: {r: 1, g: 0, b: 0, a: 1}
+  flashDuration: 0.15
 --- !u!1001 &5355747187875320003
 PrefabInstance:
   m_ObjectHideFlags: 0
