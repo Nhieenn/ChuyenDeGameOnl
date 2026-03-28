@@ -97,16 +97,28 @@ public class NetworkMenu : MonoBehaviour, INetworkRunnerCallbacks
             if (kb.aKey.isPressed) move += Vector3.left;
             if (kb.dKey.isPressed) move += Vector3.right;
 
-            if (Camera.main != null && move != Vector3.zero)
+            if (Camera.main != null)
             {
                 Vector3 camF = Camera.main.transform.forward; camF.y = 0; camF.Normalize();
                 Vector3 camR = Camera.main.transform.right;   camR.y = 0; camR.Normalize();
-                data.direction = camF * move.z + camR * move.x;
+                
+                if (move != Vector3.zero)
+                {
+                    data.direction = camF * move.z + camR * move.x;
+                }
+                
+                // Thu thập hướng Camera để khoá Lưng nhân vật trên Server
+                data.lookDirection = camF;
             }
             data.isJumpPressed = kb.spaceKey.isPressed;
+            data.isSprintPressed = kb.shiftKey.isPressed;
+            data.isDashPressed = kb.fKey.isPressed;
         }
         if (mouse != null)
+        {
             data.isFirePressed = mouse.leftButton.isPressed;
+            data.isBlockPressed = mouse.rightButton.isPressed;
+        }
 
         input.Set(data);
     }

@@ -16,6 +16,12 @@ public class FloatingUIManager : MonoBehaviour
 
     // Danh sách các thanh máu của từng người chơi
     private Dictionary<HealthSystem, VisualElement> _healthBars = new Dictionary<HealthSystem, VisualElement>();
+    private Dictionary<StaminaSystem, VisualElement> _staminaBars = new Dictionary<StaminaSystem, VisualElement>();
+
+    // Hiệu ứng máu yếu (Vignette đỏ viền màn hình)
+    private VisualElement _bloodyScreen;
+    private float _targetBloodAlpha = 0f;
+    private float _currentBloodAlpha = 0f;
 
     private void Awake()
     {
@@ -33,6 +39,31 @@ public class FloatingUIManager : MonoBehaviour
     {
         // Có thể root chưa sẵn sàng ngay Awake, nên gán ở OnEnable
         _root = _uiDoc.rootVisualElement;
+        SetupBloodScreen();
+    }
+
+    private void SetupBloodScreen()
+    {
+        if (_root == null || _bloodyScreen != null) return;
+        
+        _bloodyScreen = new VisualElement();
+        _bloodyScreen.style.position = Position.Absolute;
+        _bloodyScreen.style.left = 0; _bloodyScreen.style.right = 0;
+        _bloodyScreen.style.top = 0; _bloodyScreen.style.bottom = 0;
+        _bloodyScreen.pickingMode = PickingMode.Ignore;
+        
+        // Viền đỏ dày 40px ở 4 góc màn hình
+        _bloodyScreen.style.borderTopWidth = 40;
+        _bloodyScreen.style.borderBottomWidth = 40;
+        _bloodyScreen.style.borderLeftWidth = 40;
+        _bloodyScreen.style.borderRightWidth = 40;
+        _bloodyScreen.style.borderTopColor = new Color(1, 0, 0, 0.5f);
+        _bloodyScreen.style.borderBottomColor = new Color(1, 0, 0, 0.5f);
+        _bloodyScreen.style.borderLeftColor = new Color(1, 0, 0, 0.5f);
+        _bloodyScreen.style.borderRightColor = new Color(1, 0, 0, 0.5f);
+        
+        _bloodyScreen.style.opacity = 0f; // Mặc định ẩn
+        _root.Add(_bloodyScreen);
     }
 
     /// <summary>
@@ -82,9 +113,36 @@ public class FloatingUIManager : MonoBehaviour
         _healthBars.Add(health, container);
     }
 
-    /// <summary>
-    /// HealthSystem gọi khi nhân vật bị xóa
-    /// </summary>
+    public bool HasRegisteredHealth(HealthSystem health)
+    {
+        if (_healthBars.TryGetValue(health, out var element))
+        {
+            // Kiểm tra vô cùng quan trọng: Nếu thẻ UI tồn tại nhưng bị văng khỏi gốc giao diện (Orphaned Zombie)
+            // (Thường xảy ra khi UI Toolkit nháy Scene ở frame đầu tiên) -> Buộc phải đẻ lại!
+            if (element.panel == null)
+            {
+                _healthBars.Remove(health);
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public bool HasRegisteredStamina(StaminaSystem stamina)
+    {
+        if (_staminaBars.TryGetValue(stamina, out var element))
+        {
+            if (element.panel == null)
+            {
+                _staminaBars.Remove(stamina);
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
     public void UnregisterPlayer(HealthSystem health)
     {
         if (_healthBars.TryGetValue(health, out var element))
@@ -93,6 +151,48 @@ public class FloatingUIManager : MonoBehaviour
                 _root.Remove(element);
             _healthBars.Remove(health);
         }
+        
+        var stamina = health.GetComponent<StaminaSystem>();
+        if (stamina != null && _staminaBars.TryGetValue(stamina, out var stElement))
+        {
+            if (_root != null && _root.Contains(stElement))
+                _root.Remove(stElement);
+            _staminaBars.Remove(stamina);
+        }
+    }
+
+    /// <summary>
+    /// StaminaSystem sẽ gọi hàm này khi cập nhật để sinh UI hoặc cập nhật thanh thể lực.
+    /// </summary>
+    public void UpdateStamina(StaminaSystem stamina, float currentSp, float maxSp)
+    {
+        if (!_staminaBars.TryGetValue(stamina, out var stElement))
+        {
+            // Lần đầu gọi sẽ tự tạo Container Thể Lực
+            stElement = new VisualElement();
+            stElement.pickingMode = PickingMode.Ignore;
+            stElement.style.position = Position.Absolute;
+            stElement.style.width = 100; // Nhỏ hơn thanh máu xíu
+            stElement.style.height = 8;
+            stElement.style.backgroundColor = new Color(0, 0, 0, 0.6f);
+            
+            var stFill = new VisualElement();
+            stFill.name = "st_fill";
+            stFill.style.height = Length.Percent(100);
+            stFill.style.width = Length.Percent(100);
+            stFill.style.backgroundColor = new Color(1f, 0.8f, 0f); // Màu vàng
+            
+            stElement.Add(stFill);
+            _root.Add(stElement);
+            _staminaBars.Add(stamina, stElement);
+        }
+
+        var fill = stElement.Q<VisualElement>("st_fill");
+        float percent = Mathf.Clamp01(currentSp / maxSp) * 100f;
+        fill.style.width = Length.Percent(percent);
+        
+        // Cạn kiệt thì đổi màu xám
+        fill.style.backgroundColor = percent < 5f ? Color.gray : new Color(1f, 0.8f, 0f);
     }
 
     /// <summary>
@@ -111,7 +211,19 @@ public class FloatingUIManager : MonoBehaviour
             else if (percent > 30) fill.style.backgroundColor = new Color(0.9f, 0.7f, 0.1f);
             else fill.style.backgroundColor = new Color(0.9f, 0.2f, 0.2f);
             
-            Debug.Log($"[FloatingUIManager] Cập nhật máu Player {health.Object?.Id} -> {percent}%");
+            // Xử lý hiệu ứng chớp mép màn hình nếu đây là nhân vật của người chơi này (Local Player)
+            if (health.HasInputAuthority)
+            {
+                if (percent <= 30f && currentHp > 0)
+                {
+                    // Càng thấp máu thì mức TargetAlpha càng đậm (tối đa 1.0)
+                    _targetBloodAlpha = 1f - (percent / 30f);
+                }
+                else
+                {
+                    _targetBloodAlpha = 0f;
+                }
+            }
         }
     }
 
@@ -124,8 +236,16 @@ public class FloatingUIManager : MonoBehaviour
         }
         if (_root == null || _root.panel == null)
         {
-            // Debug.LogWarning("[FloatingUIManager] UIDocument Root hoặc Panel chưa sẵn sàng!");
             return;
+        }
+
+        // --- CẬP NHẬT HIỆU ỨNG NHỊP TIM MÁU YẾU ---
+        if (_bloodyScreen != null)
+        {
+            // Sin curve tạo nhịp đập phập phồng (pulse) 
+            float pulse = 0.6f + 0.4f * Mathf.Sin(Time.time * 6f);
+            _currentBloodAlpha = Mathf.Lerp(_currentBloodAlpha, _targetBloodAlpha * pulse, Time.deltaTime * 5f);
+            _bloodyScreen.style.opacity = _currentBloodAlpha;
         }
 
         foreach (var kvp in _healthBars)
@@ -154,5 +274,31 @@ public class FloatingUIManager : MonoBehaviour
             element.style.left = uiPos.x - 60f; 
             element.style.top = uiPos.y - 8f;
         }
+
+        // --- CẬP NHẬT TỌA ĐỘ THANH THỂ LỰC ---
+        foreach (var kvp in _staminaBars)
+        {
+            var stamina = kvp.Key;
+            var element = kvp.Value;
+
+            // Nằm thấp hơn thanh máu một chút
+            Vector3 worldPos = stamina.transform.position + Vector3.up * 2.1f;
+            Vector3 viewportPos = Camera.main.WorldToViewportPoint(worldPos);
+            if (viewportPos.z < 0)
+            {
+                element.style.display = DisplayStyle.None;
+                continue;
+            }
+            element.style.display = DisplayStyle.Flex;
+
+            Vector2 uiPos = RuntimePanelUtils.CameraTransformWorldToPanel(
+                _root.panel, worldPos, Camera.main
+            );
+
+            // Rộng 100px nên căn giữa là -50f
+            element.style.left = uiPos.x - 50f; 
+            element.style.top = uiPos.y; 
+        }
     }
+
 }

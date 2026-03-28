@@ -30,12 +30,20 @@ public class CameraController : MonoBehaviour
     private void TryFindPlayer()
     {
         if (_target != null) { CancelInvoke(nameof(TryFindPlayer)); return; }
-        var player = GameObject.FindWithTag("Player");
-        if (player != null)
+        
+        // Cực kì quan trọng trong Game Mạng (Multiplayer):
+        // Không được dùng GameObject.FindWithTag vì nó sẽ bắt nhầm nhân vật của Host.
+        // Phải tìm đúng Player thuộc quyền điều khiển của máy này (HasInputAuthority).
+        var players = FindObjectsByType<Fusion.NetworkObject>(FindObjectsSortMode.None);
+        foreach (var p in players)
         {
-            _target = player.transform;
-            LockCursor(true);
-            CancelInvoke(nameof(TryFindPlayer));
+            if (p.CompareTag("Player") && p.HasInputAuthority)
+            {
+                _target = p.transform;
+                LockCursor(true);
+                CancelInvoke(nameof(TryFindPlayer));
+                break;
+            }
         }
     }
 

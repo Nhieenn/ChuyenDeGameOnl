@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: 5498324589367948811}
   - component: {fileID: 7366608216895575114}
   - component: {fileID: 2727513135730972857}
+  - component: {fileID: 2000980185091558808}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -145,6 +146,7 @@ MonoBehaviour:
   - {fileID: 7075992577207882010}
   - {fileID: 5498324589367948811}
   - {fileID: 7366608216895575114}
+  - {fileID: 2000980185091558808}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &281850999114570431
 MonoBehaviour:
@@ -246,6 +248,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HealthSystem
   maxHealth: 100
   _CurrentHealth: 100
+  _Kills: 0
+  _Deaths: 0
+  _IsDead:
+    _value: 0
 --- !u!114 &2727513135730972857
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -260,6 +266,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DamageFlash
   flashColor: {r: 1, g: 0, b: 0, a: 1}
   flashDuration: 0.15
+--- !u!114 &2000980185091558808
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2493773470276657293}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b6e45acaa6f55e74d81fe6554e37e4ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StaminaSystem
+  maxStamina: 100
+  staminaRegenRate: 15
+  _CurrentStamina: 0
+  _IsExhausted:
+    _value: 0
+  _IsStunned:
+    _value: 0
 --- !u!1001 &5355747187875320003
 PrefabInstance:
   m_ObjectHideFlags: 0

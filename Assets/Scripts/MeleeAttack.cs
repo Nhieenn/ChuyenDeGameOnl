@@ -20,10 +20,10 @@ public class MeleeAttack : NetworkBehaviour
 
     private PlayerAnimator _anim;
 
-    // Dùng để xoay combo giữa các đòn tay
+    // Dùng để xoay combo giữa các đòn tay (Đấm phải -> Đấm trái -> ...)
     private int _comboIndex = 0;
-    // Unarmed attacks trong pack: 4=RightAttack1, 5=RightAttack2, 6=RightAttack3
-    private static readonly int[] _comboTriggers = { 4, 5, 6 };
+    // Unarmed attacks: 4=Right1, 1=Left1, 5=Right2, 2=Left2
+    private static readonly int[] _comboTriggers = { 4, 1, 5, 2 };
 
     public override void Spawned()
     {
@@ -34,20 +34,27 @@ public class MeleeAttack : NetworkBehaviour
     {
         if (!GetInput(out NetworkInputData data)) return;
 
+        var stamina = GetComponent<StaminaSystem>();
+        if (stamina != null && stamina.IsStunned) return;
+
         if (data.isFirePressed && _cooldown.ExpiredOrNotRunning(Runner))
         {
-            _cooldown = TickTimer.CreateFromSeconds(Runner, attackRate);
-
-            // Chỉ State Authority xử lý logic hit để tránh duplicate
-            if (Object.HasStateAuthority)
+            // Trừ thể lực trước khi đánh (15 điểm)
+            if (stamina == null || stamina.ConsumeStamina(15f))
             {
-                PerformRaycastHit();
-            }
+                _cooldown = TickTimer.CreateFromSeconds(Runner, attackRate);
 
-            // Animation chạy trên client bản thân để cảm giác mượt
-            int triggerNum = _comboTriggers[_comboIndex % _comboTriggers.Length];
-            _comboIndex++;
-            _anim?.TriggerAttack(triggerNum);
+                // Chỉ State Authority xử lý logic hit để tránh duplicate
+                if (Object.HasStateAuthority)
+                {
+                    PerformRaycastHit();
+                }
+
+                // Animation chạy trên client bản thân để cảm giác mượt
+                int triggerNum = _comboTriggers[_comboIndex % _comboTriggers.Length];
+                _comboIndex++;
+                _anim?.TriggerAttack(triggerNum);
+            }
         }
     }
 
@@ -65,12 +72,12 @@ public class MeleeAttack : NetworkBehaviour
 
             Debug.Log($"[MeleeAttack] Trúng: {hit.collider.name}");
 
-            // Trừ máu (gọi sang HealthSystem của mục tiêu)
+            // Trừ máu (truyền vị trí NGUỒN ĐÁNH để nạn nhân lùi, và truyền InputAuthority để tính Kill)
             var health = hit.collider.GetComponent<HealthSystem>();
             if (health != null)
             {
                 // Mỗi cú đấm trừ 10 máu
-                health.TakeDamage(10f, hit.point);
+                health.TakeDamage(10f, transform.position, Object.InputAuthority);
             }
         }
     }

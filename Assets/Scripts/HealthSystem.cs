@@ -14,6 +14,13 @@ public class HealthSystem : NetworkBehaviour
     [Networked, OnChangedRender(nameof(OnHealthChanged))]
     public float CurrentHealth { get; set; }
 
+    [Networked] public int Kills { get; set; }
+    [Networked] public int Deaths { get; set; }
+    [Networked] public NetworkBool IsDead { get; set; }
+
+    // Quản lý thời gian nằm gục chờ hồi sinh
+    [Networked] private TickTimer _respawnTimer { get; set; }
+
     // Dùng biến local để so sánh lượng máu thay đổi nhằm kích hoạt tính năng "Đứng Hình" (Hit React)
     private float _previousHealth;
 
@@ -21,25 +28,12 @@ public class HealthSystem : NetworkBehaviour
 
     public override void Spawned()
     {
-        Debug.Log($"[HealthSystem] Player {Object.Id} Spawned. Tìm kiếm FloatingUIManager...");
-
         if (Object.HasStateAuthority)
         {
             CurrentHealth = maxHealth;
+            IsDead = false;
         }
-
         _previousHealth = maxHealth;
-
-        if (FloatingUIManager.Instance != null)
-        {
-            Debug.Log("[HealthSystem] OK - Đã thấy FloatingUIManager! Bắt đầu đăng ký.");
-            FloatingUIManager.Instance.RegisterPlayer(this);
-            FloatingUIManager.Instance.UpdateHealth(this, maxHealth, maxHealth);
-        }
-        else
-        {
-            Debug.LogError("[HealthSystem] LỖI: FloatingUIManager.Instance đang NULL! Bạn chưa gắn nó vào HUD hoặc chưa lưu Scene.");
-        }
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)
@@ -55,26 +49,75 @@ public class HealthSystem : NetworkBehaviour
     /// Hàm xử lý nhận sát thương. 
     /// CHỈ được gọi bởi người đánh (State Authority của vũ khí/đạn).
     /// </summary>
-    public void TakeDamage(float damage, Vector3 hitPosition)
+    public void TakeDamage(float damage, Vector3 attackerPos, PlayerRef attackerRef)
     {
-        // Fix: Tránh trường hợp client tự trừ máu của thằng khác. 
-        // Trong Shared Mode, state authority cùa HealthSystem có thể thuộc về người bị đánh, 
-        // nhưng người đánh cũng có thể Require quyền sửa biến này nếu dùng RPC.
-        // Để đơn giản và lag-free: Dùng RPC yêu cầu chủ thể tự trừ máu của mình.
-        Rpc_TakeDamage(damage, hitPosition);
+        if (IsDead) return;
+        Rpc_TakeDamage(damage, attackerPos, attackerRef);
     }
 
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    private void Rpc_TakeDamage(float damage, Vector3 hitPosition)
+    private void Rpc_TakeDamage(float damage, Vector3 attackerPos, PlayerRef attackerRef)
     {
-        if (CurrentHealth <= 0) return; // Đã chết rồi
+        if (CurrentHealth <= 0 || IsDead) return; // Đã chết rồi
+
+        var movement = GetComponent<PlayerMovement>();
+        var stamina = GetComponent<StaminaSystem>();
+
+        // [MỚI] KIỂM TRA ĐỠ ĐÒN (BLOCKING)
+        bool isHitOnShield = false;
+        if (movement != null && movement.IsBlocking)
+        {
+            damage *= 0.5f; // Giảm 50% sát thương nhận vào nếu dựng khiên
+            isHitOnShield = true;
+            
+            // Gõ vào khiên sẽ làm hao mòn nghiêm trọng Thể Lực của nạn nhân
+            if (stamina != null)
+            {
+                stamina.ConsumeStamina(15f);
+            }
+        }
+
+        // Xử lý nảy lùi lại (Knockback)
+        if (movement != null)
+        {
+            Vector3 pushDir = (transform.position - attackerPos).normalized;
+            pushDir.y = 0.5f; // Hơi nảy nhẹ lên trên một chút cho có cảm giác chấn động
+            
+            // Nếu có Khiên, lùi ít đi 1 chút để tạo cảm giác chấn thủ vững vàng
+            float knockForce = isHitOnShield ? 6f : 12f;
+            movement.ApplyKnockback(pushDir * knockForce); 
+        }
+
+        // Tính toán hướng bị đánh (để suy ra hoạt ảnh HitF, HitB, HitL, HitR)
+        Vector3 hitDirection = (attackerPos - transform.position).normalized;
+        hitDirection.y = 0;
+        
+        // Góc giữa hướng mặt của mình và hướng đòn đánh bay tới
+        float angle = Vector3.SignedAngle(transform.forward, hitDirection, Vector3.up);
+        
+        // Quy đổi góc sang Float cho Blend Tree hoặc Animator
+        // Quy ước: 0=Front, 1=Right, 2=Back, 3=Left (Tuỳ chỉnh theo cách bạn setup Animator)
+        float hitX = 0f;
+        if (angle > -45f && angle <= 45f) hitX = 0f; // Bị đấm trước mặt (Front) -> Mình lùi ra sau
+        else if (angle > 45f && angle <= 135f) hitX = 1f; // Bị đấm bên Phải
+        else if (angle < -45f && angle >= -135f) hitX = 3f; // Bị đấm bên Trái
+        else hitX = 2f; // Bị đấm sau lưng (Back) -> Mình ngã nhào tới trước
+
+        // Báo cho Animator giật người
+        GetComponent<PlayerAnimator>()?.TriggerHit(hitX);
+
+        // Kiểm tra Hết Thể Lực -> Bị Choáng! (Tính năng "Vỡ Khiên" ăn theo logic này cực kì hoàn hảo)
+        if (stamina != null && stamina.IsExhausted && !stamina.IsStunned)
+        {
+            stamina.TriggerExhaustionStun();
+        }
 
         CurrentHealth -= damage;
 
         // Nếu máu tụt xuống 0 thì xử lý chết
         if (CurrentHealth <= 0)
         {
-            Die();
+            Die(attackerRef);
         }
     }
 
@@ -114,17 +157,77 @@ public class HealthSystem : NetworkBehaviour
         }
     }
 
-    private void Die()
+    public override void FixedUpdateNetwork()
     {
+        // Hệ thống Hồi sinh tự động sau 3 giây (chỉ chạy trên StateAuthority)
+        if (Object.HasStateAuthority && IsDead && _respawnTimer.Expired(Runner))
+        {
+            Respawn();
+        }
+    }
+
+    public override void Render()
+    {
+        // Liên tục kiểm tra xem Floating UI MỚI NHẤT đã vẽ thanh máu của mình chưa
+        // Cần thiết vì Scene Reload của Client sẽ tiêu hủy UI Document của Scene Cũ
+        if (FloatingUIManager.Instance != null && !FloatingUIManager.Instance.HasRegisteredHealth(this))
+        {
+            FloatingUIManager.Instance.RegisterPlayer(this);
+            FloatingUIManager.Instance.UpdateHealth(this, CurrentHealth, maxHealth);
+        }
+    }
+
+    private void Die(PlayerRef killerRef)
+    {
+        if (IsDead) return;
         Debug.Log($"[HealthSystem] Player {Object.Id} BỊ HẠ GỤC!");
+        
+        IsDead = true;
+        Deaths += 1; // Tăng số lần chết
+
+        // Tìm người đã giết mình và cộng điểm Kill cho họ
+        if (killerRef != PlayerRef.None && killerRef != Object.InputAuthority)
+        {
+            var allPlayers = FindObjectsByType<HealthSystem>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            foreach (var hp in allPlayers)
+            {
+                if (hp.Object != null && hp.Object.InputAuthority == killerRef)
+                {
+                    hp.Kills += 1;
+                    break;
+                }
+            }
+        }
+
+        // Báo Animator nằm xuống đất
+        GetComponent<PlayerAnimator>()?.Rpc_TriggerKnockdown();
+
+        // Xóa thanh máu tạm thời
+        if (FloatingUIManager.Instance != null)
+            FloatingUIManager.Instance.UpdateHealth(this, 0, maxHealth);
+
+        // Hẹn giờ 3 giây sau dậy
+        _respawnTimer = TickTimer.CreateFromSeconds(Runner, 3f);
+    }
+
+    private void Respawn()
+    {
+        IsDead = false;
+
+        // Báo Animator đứng dậy
+        GetComponent<PlayerAnimator>()?.Rpc_TriggerGetUp();
 
         // Lấy Random vị trí hồi sinh
         Vector3 randomRespawnPos = new Vector3(Random.Range(-5f, 5f), 1f, Random.Range(-5f, 5f));
         
         // Di chuyển xác về vị trí mới
-        GetComponent<CharacterController>().enabled = false;
-        transform.position = randomRespawnPos;
-        GetComponent<CharacterController>().enabled = true;
+        var controller = GetComponent<CharacterController>();
+        if (controller != null)
+        {
+            controller.enabled = false;
+            transform.position = randomRespawnPos;
+            controller.enabled = true;
+        }
 
         // Bơm lại máu
         CurrentHealth = maxHealth;

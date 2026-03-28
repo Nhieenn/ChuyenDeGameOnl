@@ -13,20 +13,21 @@ public class PlayerAnimator : NetworkBehaviour
     private static readonly int VelocityX  = Animator.StringToHash("Velocity X");
     private static readonly int VelocityZ  = Animator.StringToHash("Velocity Z");
     private static readonly int Moving     = Animator.StringToHash("Moving");
-    private static readonly int Jumping    = Animator.StringToHash("Jumping");
+    private static readonly int Jumping    = Animator.StringToHash("IsJumping");
     private static readonly int Trigger    = Animator.StringToHash("Trigger");
     private static readonly int TriggerNum = Animator.StringToHash("TriggerNumber");
-
-    // Hash bổ sung
-    private static readonly int Weapon         = Animator.StringToHash("Weapon");
-    private static readonly int AnimationSpeed = Animator.StringToHash("AnimationSpeed");
+    private static readonly int HitHash    = Animator.StringToHash("Hit");
+    private static readonly int HitDirHash = Animator.StringToHash("HitX");
+    private static readonly int KnockHash  = Animator.StringToHash("Knockdown");
+    private static readonly int GetUpHash  = Animator.StringToHash("GetUp");
+    private static readonly int RollHash   = Animator.StringToHash("Roll");
+    private static readonly int StunHash   = Animator.StringToHash("Stun");
 
     // State animation gửi qua network
     [Networked] private NetworkBool NetMoving  { get; set; }
     [Networked] private float       NetVelX    { get; set; }
     [Networked] private float       NetVelZ    { get; set; }
     [Networked] private NetworkBool NetJumping { get; set; }
-    [Networked] private int         NetTrigger { get; set; }
 
     public override void Spawned()
     {
@@ -51,23 +52,77 @@ public class PlayerAnimator : NetworkBehaviour
     public void TriggerAttack(int attackNumber)
     {
         if (!Object.HasInputAuthority) return;
-        NetTrigger = attackNumber;
+        Rpc_TriggerAttack(attackNumber);
+    }
+
+    [Rpc(RpcSources.InputAuthority | RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_TriggerAttack(int attackNumber)
+    {
+        if (_animator == null) return;
+        _animator.SetInteger(TriggerNum, attackNumber);
+        _animator.SetTrigger(Trigger);
+    }
+
+    /// <summary>Gọi từ HealthSystem khi trúng đòn</summary>
+    public void TriggerHit(float hitDirection)
+    {
+        Rpc_TriggerHit(hitDirection);
+    }
+
+    [Rpc(RpcSources.StateAuthority | RpcSources.InputAuthority, RpcTargets.All)]
+    private void Rpc_TriggerHit(float hitDirection)
+    {
+        if (_animator != null)
+        {
+            _animator.SetFloat(HitDirHash, hitDirection);
+            _animator.SetTrigger(HitHash);
+        }
+    }
+
+    /// <summary>Hạ gục và Hồi sinh</summary>
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    public void Rpc_TriggerKnockdown()
+    {
+        if (_animator != null)
+        {
+            _animator.SetTrigger(KnockHash);
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    public void Rpc_TriggerGetUp()
+    {
+        if (_animator != null)
+        {
+            _animator.SetTrigger(GetUpHash);
+        }
+    }
+
+    [Rpc(RpcSources.InputAuthority | RpcSources.StateAuthority, RpcTargets.All)]
+    public void Rpc_TriggerRoll()
+    {
+        if (_animator != null)
+        {
+            _animator.SetTrigger(RollHash);
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    public void Rpc_TriggerStun()
+    {
+        if (_animator != null)
+        {
+            _animator.SetTrigger(StunHash);
+        }
     }
 
     public override void Render()
     {
         if (_animator == null) return;
 
-        // Chỉ truyền đúng 2 Parameter của Blend Tree Locomotion mới
+        // Truyền các Parameter trạng thái liên tục
         _animator.SetFloat(VelocityX, NetVelX); 
         _animator.SetFloat(VelocityZ, NetVelZ);
-
-        // Truyền trigger tấn công nếu có
-        if (NetTrigger > 0)
-        {
-            _animator.SetInteger(TriggerNum, NetTrigger);
-            _animator.SetTrigger(Trigger);
-            NetTrigger = 0;
-        }
+        _animator.SetBool(Jumping, NetJumping);
     }
 }
