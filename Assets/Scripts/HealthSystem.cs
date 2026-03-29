@@ -185,19 +185,9 @@ public class HealthSystem : NetworkBehaviour
         IsDead = true;
         Deaths += 1; // Tăng số lần chết
 
-        // Tìm người đã giết mình và cộng điểm Kill cho họ
-        if (killerRef != PlayerRef.None && killerRef != Object.InputAuthority)
-        {
-            var allPlayers = FindObjectsByType<HealthSystem>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-            foreach (var hp in allPlayers)
-            {
-                if (hp.Object != null && hp.Object.InputAuthority == killerRef)
-                {
-                    hp.Kills += 1;
-                    break;
-                }
-            }
-        }
+        // Báo cho toàn bản đồ biết ai là người vung đấm chốt hạ
+        // Đây là cách vượt qua bộ luật StateAuthority gắt gao của Fusion
+        Rpc_BroadcastDeath(killerRef);
 
         // Báo Animator nằm xuống đất
         GetComponent<PlayerAnimator>()?.Rpc_TriggerKnockdown();
@@ -208,6 +198,38 @@ public class HealthSystem : NetworkBehaviour
 
         // Hẹn giờ 3 giây sau dậy
         _respawnTimer = TickTimer.CreateFromSeconds(Runner, 3f);
+    }
+
+    // [MỚI - ĐẤU NỐI PLAYFAB]
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_BroadcastDeath(PlayerRef killer)
+    {
+        // Kiểm tra xem TRÊN BẢN THÂN CHIẾC MÁY HIỆN TẠI (LocalPlayer), mình có phải là thằng giết người không?
+        if (killer != PlayerRef.None && Runner.LocalPlayer == killer)
+        {
+            // Mình chính là tên sát thủ! Giờ thì đi tìm biến Nhân Hình của mình (HealthSystem)
+            var allPlayers = FindObjectsByType<HealthSystem>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            foreach (var hp in allPlayers)
+            {
+                if (hp.Object != null && hp.Object.InputAuthority == Runner.LocalPlayer)
+                {
+                    // Được quyền tự do thao tác sửa máu/kill vì mình LÀ CHỦ NHÂN thực sự trên máy tính này
+                    hp.Kills += 1;
+                    
+                    // GỘP NGAY ĐIỂM SỐ LÊN MÁY CHỦ BẢNG XẾP HẠNG MICROSOFT ĐÁM MÂY!
+                    if (PlayFabManager.Instance != null)
+                    {
+                        PlayFabManager.Instance.SendLeaderboard(hp.Kills);
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[PlayFab] Không tìm thấy PlayFabManager để gửi điểm Kills.");
+                    }
+                    
+                    break;
+                }
+            }
+        }
     }
 
     private void Respawn()

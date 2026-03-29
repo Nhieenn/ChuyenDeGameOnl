@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Fusion;
+using Fusion.Photon.Realtime;
 using Fusion.Sockets;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -60,7 +61,9 @@ public class NetworkMenu : MonoBehaviour, INetworkRunnerCallbacks
             SessionName = roomName.Trim(),
             Scene = SceneRef.FromIndex(SceneManager.GetActiveScene().buildIndex),
             SceneManager = sceneManager,
-            ObjectProvider = pool
+            ObjectProvider = pool,
+            // Tránh 104 ServerLogic: Máy chủ đá ra do 2 cửa sổ trên cùng 1 máy dùng chung ID (deviceUniqueIdentifier)
+            AuthValues = new AuthenticationValues(Guid.NewGuid().ToString())
         });
 
         if (!result.Ok)

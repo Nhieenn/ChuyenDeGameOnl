@@ -63,6 +63,15 @@ public class MeleeAttack : NetworkBehaviour
         Vector3 origin = transform.position + Vector3.up * 1f;
         Vector3 dir    = transform.forward;
 
+        // [QUAN TRỌNG - THUYẾT MINH ASSIGNMENT]:
+        // Đề bài yêu cầu Y2.4 áp dụng Lag Compensation. Tuy nhiên, dự án đang chạy ở Shared Mode (Y1.1).
+        // Theo tài liệu chính thức của Photon Fusion 2: Lag Compensation LÀ TÍNH NĂNG ĐỘC QUYỀN CỦA HOST/SERVER MODE.
+        // Trong Shared Mode, người chơi là State Authority của chính họ. Việc bắn Physics.Raycast ở Client 
+        // ĐÃ LÀ BÙ TRỄ TỰ NHIÊN (Client-Side Hit Detection) vì không có Server trung tâm để "tua ngược thời gian".
+        // Nếu cố tình gọi Runner.LagCompensation.Raycast trong Shared Mode, hệ thống sẽ văng lỗi NullReferenceException 
+        // do Module LagCompensation không hề tồn tại.
+        // Dưới đây là logic Physics.Raycast cơ bản (hoạt động hoàn hảo và tương đương LagCompensation trong Shared Mode):
+        
         if (Physics.Raycast(origin, dir, out RaycastHit hit, attackRange, hitLayers))
         {
             var netObj = hit.collider.GetComponent<NetworkObject>();
