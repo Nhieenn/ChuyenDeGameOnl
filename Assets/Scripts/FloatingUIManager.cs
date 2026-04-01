@@ -17,6 +17,7 @@ public class FloatingUIManager : MonoBehaviour
     // Danh sách các thanh máu của từng người chơi
     private Dictionary<HealthSystem, VisualElement> _healthBars = new Dictionary<HealthSystem, VisualElement>();
     private Dictionary<StaminaSystem, VisualElement> _staminaBars = new Dictionary<StaminaSystem, VisualElement>();
+    private Dictionary<RageSystem, VisualElement> _rageBars = new Dictionary<RageSystem, VisualElement>();
 
     // Hiệu ứng máu yếu (Vignette đỏ viền màn hình)
     private VisualElement _bloodyScreen;
@@ -143,6 +144,20 @@ public class FloatingUIManager : MonoBehaviour
         return false;
     }
 
+    public bool HasRegisteredRage(RageSystem rage)
+    {
+        if (_rageBars.TryGetValue(rage, out var element))
+        {
+            if (element.panel == null)
+            {
+                _rageBars.Remove(rage);
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
     public void UnregisterPlayer(HealthSystem health)
     {
         if (_healthBars.TryGetValue(health, out var element))
@@ -158,6 +173,14 @@ public class FloatingUIManager : MonoBehaviour
             if (_root != null && _root.Contains(stElement))
                 _root.Remove(stElement);
             _staminaBars.Remove(stamina);
+        }
+
+        var rage = health.GetComponent<RageSystem>();
+        if (rage != null && _rageBars.TryGetValue(rage, out var rgElement))
+        {
+            if (_root != null && _root.Contains(rgElement))
+                _root.Remove(rgElement);
+            _rageBars.Remove(rage);
         }
     }
 
@@ -193,6 +216,49 @@ public class FloatingUIManager : MonoBehaviour
         
         // Cạn kiệt thì đổi màu xám
         fill.style.backgroundColor = percent < 5f ? Color.gray : new Color(1f, 0.8f, 0f);
+    }
+
+    /// <summary>
+    /// RageSystem sẽ gọi hàm này để cập nhật thanh nộ nổi.
+    /// </summary>
+    public void UpdateRage(RageSystem rage, float currentRg, float maxRg)
+    {
+        if (!_rageBars.TryGetValue(rage, out var rgElement))
+        {
+            Debug.Log($"[FloatingUIManager] Đang tạo thanh nộ dọc cho: {rage.gameObject.name}");
+            
+            rgElement = new VisualElement();
+            rgElement.name = "RageBarRoot";
+            rgElement.pickingMode = PickingMode.Ignore;
+            rgElement.style.position = Position.Absolute;
+            
+            // TẤT CẢ NGƯỜI CHƠI ĐỀU DÙNG THANH DỌC (CHIẾN THUẬT)
+            rgElement.style.width = 15;  
+            rgElement.style.height = 65; 
+            rgElement.style.backgroundColor = new Color(0, 0, 0, 0.8f);
+            rgElement.style.borderBottomLeftRadius = 4;
+            rgElement.style.borderBottomRightRadius = 4;
+            rgElement.style.borderTopLeftRadius = 4;
+            rgElement.style.borderTopRightRadius = 4;
+            rgElement.style.flexDirection = FlexDirection.ColumnReverse;
+            
+            var rgFill = new VisualElement();
+            rgFill.name = "rg_fill";
+            rgFill.style.width = Length.Percent(100);
+            rgFill.style.height = Length.Percent(0);
+            rgFill.style.backgroundColor = new Color(1f, 0.5f, 0f); // Màu cam
+            
+            rgElement.Add(rgFill);
+            _root.Add(rgElement);
+            _rageBars.Add(rage, rgElement);
+        }
+
+        var fill = rgElement.Q<VisualElement>("rg_fill");
+        float percent = Mathf.Clamp(currentRg / maxRg * 100f, 0, 100);
+        fill.style.height = Length.Percent(percent);
+
+        // Đỏ khi nộ
+        fill.style.backgroundColor = rage.IsRaging ? Color.red : new Color(1f, 0.5f, 0f);
     }
 
     /// <summary>
@@ -298,6 +364,27 @@ public class FloatingUIManager : MonoBehaviour
             // Rộng 100px nên căn giữa là -50f
             element.style.left = uiPos.x - 50f; 
             element.style.top = uiPos.y; 
+        }
+
+        // --- CẬP NHẬT TỌA ĐỘ THANH NỘ ---
+        foreach (var kvp in _rageBars)
+        {
+            var rage = kvp.Key;
+            var element = kvp.Value;
+
+            if (rage == null || element == null) continue;
+
+            // Đặt thanh nộ ở vị trí ngang hông (up * 1.0f) và lệch phải (right * 0.7f)
+            Vector3 worldPos = rage.transform.position + (Vector3.up * 1.0f) + (rage.transform.right * 0.7f);
+
+            Vector3 viewportPos = Camera.main.WorldToViewportPoint(worldPos);
+            if (viewportPos.z < 0) { element.style.display = DisplayStyle.None; continue; }
+            element.style.display = DisplayStyle.Flex;
+
+            Vector2 uiPos = RuntimePanelUtils.CameraTransformWorldToPanel(_root.panel, worldPos, Camera.main);
+            
+            element.style.left = uiPos.x; 
+            element.style.top = uiPos.y - 32f; // Căn giữa thanh dọc (65px / 2)
         }
     }
 

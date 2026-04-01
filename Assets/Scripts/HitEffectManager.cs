@@ -10,14 +10,19 @@ public class HitEffectManager : MonoBehaviour
 {
     public static HitEffectManager Instance { get; private set; }
 
-    [Tooltip("Kéo Prefab hạt Particle của bạn vào đây")]
+    [Header("Prefabs")]
+    [Tooltip("Hạt bụi/lửa nhỏ khi đấm trúng (Normal Hit)")]
     public GameObject hitParticlePrefab;
+
+    [Tooltip("VFX Nổ cực mạnh khi nhân vật bị hạ gục (Death Effect)")]
+    public GameObject deathParticlePrefab;
 
     [Tooltip("Kéo Prefab DamageText (Chữ nhảy sát thương) vào đây")]
     public GameObject damageTextPrefab;
 
-    // Sử dụng ObjectTool tích hợp sẵn của Unity (v2021+)
+    // Sử dụng ObjectPool tích hợp sẵn của Unity (v2021+)
     private ObjectPool<GameObject> _particlePool;
+    private ObjectPool<GameObject> _deathPool;
     private ObjectPool<GameObject> _textPool;
 
     private void Awake()
@@ -25,7 +30,7 @@ public class HitEffectManager : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
-        // Khởi tạo Pool Hạt
+        // Khởi tạo Pool Hạt thường
         _particlePool = new ObjectPool<GameObject>(
             createFunc: CreateParticle,
             actionOnGet: OnTakeParticle,
@@ -33,6 +38,16 @@ public class HitEffectManager : MonoBehaviour
             actionOnDestroy: Destroy,
             defaultCapacity: 10,
             maxSize: 100
+        );
+
+        // Khởi tạo Pool Nổ khi chết
+        _deathPool = new ObjectPool<GameObject>(
+            createFunc: CreateDeathParticle,
+            actionOnGet: OnTakeParticle,
+            actionOnRelease: OnReturnParticle,
+            actionOnDestroy: Destroy,
+            defaultCapacity: 5,
+            maxSize: 20
         );
 
         // Khởi tạo Pool Chữ
@@ -103,6 +118,27 @@ public class HitEffectManager : MonoBehaviour
         {
             anim.Setup($"-{damageAmount}", Color.red);
         }
+    }
+
+    // --- DEATH VNF POOL LOGIC ---
+    private GameObject CreateDeathParticle()
+    {
+        if (deathParticlePrefab == null) return null;
+        var obj = Instantiate(deathParticlePrefab);
+        
+        // Gắn script tự động thu hồi vào Pool sau 1 giây
+        var returner = obj.AddComponent<ReturnParticleToPool>();
+        returner.pool = _deathPool;
+        return obj;
+    }
+
+    public void SpawnDeathEffect(Vector3 position)
+    {
+        if (deathParticlePrefab == null) return;
+
+        var obj = _deathPool.Get();
+        obj.transform.position = position;
+        obj.transform.rotation = Quaternion.identity;
     }
 }
 

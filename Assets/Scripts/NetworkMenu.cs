@@ -116,10 +116,11 @@ public class NetworkMenu : MonoBehaviour, INetworkRunnerCallbacks
             data.isJumpPressed = kb.spaceKey.isPressed;
             data.isSprintPressed = kb.shiftKey.isPressed;
             data.isDashPressed = kb.fKey.isPressed;
+            data.isRagePressed = kb.rKey.isPressed; // ÁNH XẠ PHÍM R VÀO DỮ LIỆU MẠNG
         }
         if (mouse != null)
         {
-            data.isFirePressed = mouse.leftButton.isPressed;
+            data.isAttackPressed = mouse.leftButton.isPressed;
             data.isBlockPressed = mouse.rightButton.isPressed;
         }
 

@@ -22,6 +22,11 @@ public class PlayerAnimator : NetworkBehaviour
     private static readonly int GetUpHash  = Animator.StringToHash("GetUp");
     private static readonly int RollHash   = Animator.StringToHash("Roll");
     private static readonly int StunHash   = Animator.StringToHash("Stun");
+    private static readonly int RagingHash = Animator.StringToHash("IsRaging");
+
+    [Header("Weapon Models")]
+    [SerializeField] private GameObject unarmedVisual; // Model tay không
+    [SerializeField] private GameObject swordVisual;   // Model kiếm (2Hand-Sword)
 
     // State animation gửi qua network
     [Networked] private NetworkBool NetMoving  { get; set; }
@@ -31,11 +36,22 @@ public class PlayerAnimator : NetworkBehaviour
 
     public override void Spawned()
     {
-        _animator = GetComponentInChildren<Animator>();
-        if (_animator == null)
-            Debug.LogWarning("[PlayerAnimator] Không tìm thấy Animator trong children!");
-        else
-            Debug.Log("[PlayerAnimator] Tìm thấy Animator: " + _animator.gameObject.name);
+        // Khởi tạo trạng thái model ngay lập tức để không bị chồng mesh
+        UpdateVisuals(false);
+    }
+
+    private void UpdateVisuals(bool isRaging)
+    {
+        if (unarmedVisual != null) unarmedVisual.SetActive(!isRaging);
+        if (swordVisual != null) swordVisual.SetActive(isRaging);
+
+        // Lấy Animator của model đang hiển thị
+        _animator = isRaging 
+            ? (swordVisual != null ? swordVisual.GetComponent<Animator>() : null)
+            : (unarmedVisual != null ? unarmedVisual.GetComponent<Animator>() : null);
+
+        // Nếu model con không có Animator, thử lấy ở root
+        if (_animator == null) _animator = GetComponentInChildren<Animator>();
     }
 
     /// <summary>Gọi từ PlayerMovement mỗi FixedUpdateNetwork</summary>
@@ -118,11 +134,21 @@ public class PlayerAnimator : NetworkBehaviour
 
     public override void Render()
     {
-        if (_animator == null) return;
+        var rage = GetComponent<RageSystem>();
+        if (rage != null)
+        {
+            bool isRaging = rage.IsRaging;
+            UpdateVisuals(isRaging);
 
-        // Truyền các Parameter trạng thái liên tục
-        _animator.SetFloat(VelocityX, NetVelX); 
-        _animator.SetFloat(VelocityZ, NetVelZ);
-        _animator.SetBool(Jumping, NetJumping);
+            if (_animator != null)
+            {
+                _animator.SetBool(RagingHash, isRaging);
+                
+                // Truyền các Parameter trạng thái liên tục
+                _animator.SetFloat(VelocityX, NetVelX); 
+                _animator.SetFloat(VelocityZ, NetVelZ);
+                _animator.SetBool(Jumping, NetJumping);
+            }
+        }
     }
 }

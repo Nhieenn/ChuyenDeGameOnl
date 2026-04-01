@@ -18,6 +18,7 @@ public class HUDController : MonoBehaviour
     public Color color = Color.white;
 
     private VisualElement _root;
+    private VisualElement _vignette; // Hiệu ứng viền đỏ khi bị đau
     private Label _kdaLabel;
     private Label _timerLabel; // Đồng hồ đếm lùi Match Time
     
@@ -52,8 +53,44 @@ public class HUDController : MonoBehaviour
         hudContainer.pickingMode = PickingMode.Ignore;
         _root.Add(hudContainer);
 
+        // Khởi tạo Viền Đỏ (Vignette) - Ban đầu ẩn đi
+        _vignette = new VisualElement();
+        _vignette.pickingMode = PickingMode.Ignore;
+        _vignette.style.position = Position.Absolute;
+        _vignette.style.width = new Length(100, LengthUnit.Percent);
+        _vignette.style.height = new Length(100, LengthUnit.Percent);
+        _vignette.style.borderLeftColor = _vignette.style.borderRightColor = _vignette.style.borderTopColor = _vignette.style.borderBottomColor = new Color(1, 0, 0, 0);
+        _vignette.style.borderLeftWidth = _vignette.style.borderRightWidth = 100; // Độ dày viền đỏ
+        _vignette.style.borderTopWidth = _vignette.style.borderBottomWidth = 80;
+        _vignette.style.opacity = 0;
+        _root.Add(_vignette);
+
         BuildCrosshair(hudContainer);
         BuildKDA_Board(hudContainer);
+    }
+
+    /// <summary>
+    /// Kích hoạt hiệu ứng chớp đỏ viền màn hình khi bị trúng đòn.
+    /// </summary>
+    public void TriggerHitVignette()
+    {
+        StopAllCoroutines();
+        StartCoroutine(FadeVignette());
+    }
+
+    private System.Collections.IEnumerator FadeVignette()
+    {
+        _vignette.style.opacity = 1f; // Hiện ngay lập tức
+        float elapsed = 0f;
+        float duration = 0.5f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            _vignette.style.opacity = Mathf.Lerp(1f, 0f, elapsed / duration);
+            yield return null;
+        }
+        _vignette.style.opacity = 0f;
     }
 
     private void OnDisable()

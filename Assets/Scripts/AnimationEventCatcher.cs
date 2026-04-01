@@ -8,10 +8,16 @@ using UnityEngine;
 public class AnimationEventCatcher : MonoBehaviour
 {
     // Bắt event đấm (tay chạm mục tiêu)
-    public void Hit() { }
-
-    // Bắt event bắn (vũ khí súng)
-    public void Shoot() { }
+    // Bắt event đấm (tay chạm mục tiêu)
+    public void Hit() 
+    {
+        // Script này nằm ở con (RPG-Character), ta cần gọi sang script ở Cha (Player Root)
+        var melee = GetComponentInParent<MeleeAttack>();
+        if (melee != null)
+        {
+            melee.ExecuteHitDetection();
+        }
+    }
 
     // Bắt event bước chân
     public void FootR() { }

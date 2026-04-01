@@ -7,10 +7,11 @@ public struct NetworkInputData : INetworkInput
     public Vector3 direction; // Vector hướng bấm phím WASD
     public Vector3 lookDirection; // Hướng Camera/Crosshair đang nhòm tới
     public NetworkBool isJumpPressed; // Dùng NetworkBool để tối ưu đồng bộ trong Fusion
-    public NetworkBool isFirePressed; // Dùng để bắn đạn
+    public NetworkBool isAttackPressed; // Chuột trái: Đấm/Đánh cận chiến
     public NetworkBool isSprintPressed; // Phím Shift chạy nhanh
     public NetworkBool isDashPressed;   // Phím F lướt
     public NetworkBool isBlockPressed;  // Chuột Phải: Đỡ đòn
+    public NetworkBool isRagePressed;   // Phím R: Kích hoạt Nộ
 }
 
 [RequireComponent(typeof(CharacterController))]
@@ -121,7 +122,11 @@ public class PlayerMovement : NetworkBehaviour
             }
 
             // 0. Xử lý Đỡ đòn (Khiên rùa) - Phải cập nhật trước tốc độ di chuyển
-            if (data.isBlockPressed && !isStunned)
+            var rage = GetComponent<RageSystem>();
+            bool isRaging = rage != null && rage.IsRaging;
+
+            // NẾU ĐANG NỘ -> CẤM ĐỠ ĐÒN
+            if (data.isBlockPressed && !isStunned && !isRaging)
             {
                 if (stamina != null && stamina.DrainStaminaContinually(10f)) // Tốn 10 điểm Thể Lực/giây
                 {
@@ -148,6 +153,9 @@ public class PlayerMovement : NetworkBehaviour
 
             // 2. Chạy nhanh (Sprint) - CHỈ được phép khi đi tới trước!
             float currentSpeed = IsBlocking ? speed * 0.5f : speed; // Giảm 50% tốc độ nếu bê khiên
+            
+            // TĂNG TỐC KHI ĐANG NỘ
+            if (isRaging) currentSpeed *= 1.4f; // Nhanh hơn 40%
             bool isSprinting = false;
             if (data.isSprintPressed && data.direction != Vector3.zero && !IsBlocking)
             {

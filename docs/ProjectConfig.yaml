@@ -1,0 +1,26 @@
+# ProjectConfig for Not 1v1
+# Cấu hình "bộ não" AI để phù hợp với dự án hiện tại
+
+project_name: "Not 1v1"
+genre: "Multiplayer Arena Combat"
+target_platforms: ["PC", "Web, Mobile"]
+
+# Unity
+unity_version: "6000.3.10f1"
+render_pipeline: "URP"            # Giả định URP cho Unity 6
+scripting_backend: "Mono"         # Thường dùng Mono khi dev
+ui_system: "UIToolkit"            # Chúng ta đang dùng UI Toolkit cho Scoreboard
+folder_strategy: "type-based"     # Hiện tại dự án đang theo kiểu chia theo Script, Prefab...
+networking: "Photon"              # Fusion
+async_pattern: "Awaitable"        # Unity 6 khuyên dùng Awaitable
+use_ecs_dots: false
+
+# Architecture
+architecture_pattern: "so-first"  # ScriptableObject architecture (dễ tiếp cận)
+di_framework: "none"
+
+# Behavior
+ai_mode: "mix"                    # Phối hợp nhịp nhàng giữa mình và bạn
+auto_confirm: false
+prototype_mode: false
+prompt_logging: true              # Lưu lại nhật ký làm việc vào docs/PromptLog.md

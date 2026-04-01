@@ -62,6 +62,7 @@ public class HealthSystem : NetworkBehaviour
 
         var movement = GetComponent<PlayerMovement>();
         var stamina = GetComponent<StaminaSystem>();
+        var rage = GetComponent<RageSystem>();
 
         // [MỚI] KIỂM TRA ĐỠ ĐÒN (BLOCKING)
         bool isHitOnShield = false;
@@ -75,6 +76,14 @@ public class HealthSystem : NetworkBehaviour
             {
                 stamina.ConsumeStamina(15f);
             }
+            
+            // Đỡ đòn thành công sẽ tích nộ rất nhanh (10 điểm)
+            if (rage != null) rage.AddRage(10f);
+        }
+        else
+        {
+            // Bị trúng đòn trực diện tích nộ vừa phải (8 điểm)
+            if (rage != null) rage.AddRage(8f);
         }
 
         // Xử lý nảy lùi lại (Knockback)
@@ -114,10 +123,22 @@ public class HealthSystem : NetworkBehaviour
 
         CurrentHealth -= damage;
 
-        // Nếu máu tụt xuống 0 thì xử lý chết
+        // Nếu máu tụt xuống 0 thì xử lý chết (Nếu Nộ thì không chết mà sẽ bị Gục cưỡng bức)
         if (CurrentHealth <= 0)
         {
-            Die(attackerRef);
+            var rageSystem = GetComponent<RageSystem>();
+            if (rageSystem != null && rageSystem.IsRaging)
+            {
+                // THOÁT NỘ CƯỠNG BỨC + BỊ STUN (Cơ chế Second Life của bồ)
+                rageSystem.ForceExitRage();
+                stamina?.TriggerExhaustionStun();
+                CurrentHealth = 5f; // Giữ lại 5 máu để không bị chết nhầm do lag mạng
+                Debug.Log("[HealthSystem] Nộ đã bảo vệ bồ! Bồ bị Choáng nhưng không chết!");
+            }
+            else
+            {
+                Die(attackerRef);
+            }
         }
     }
 
@@ -138,6 +159,16 @@ public class HealthSystem : NetworkBehaviour
         // Nếu thực sự BỊ TRỪ MÁU
         if (damageTaken > 0)
         {
+            // --- [GAME FEEL] Rung màn hình nhẹ ---
+            var cam = Camera.main?.GetComponent<CameraController>();
+            if (cam != null) cam.Shake(0.1f, 0.05f); // Rung nhẹ
+
+            // --- [GAME FEEL] Chớp đỏ viền (Chỉ dành cho máy của nạn nhân) ---
+            if (Object.HasInputAuthority && HUDController.Instance != null)
+            {
+                HUDController.Instance.TriggerHitVignette();
+            }
+
             // 2. Chớp đỏ người (Damage Flash)
             var flasher = GetComponent<DamageFlash>();
             if (flasher != null)
@@ -189,8 +220,21 @@ public class HealthSystem : NetworkBehaviour
         // Đây là cách vượt qua bộ luật StateAuthority gắt gao của Fusion
         Rpc_BroadcastDeath(killerRef);
 
+        // --- [GAME FEEL] Chấn động chốt hạ ---
+        var cam = Camera.main?.GetComponent<CameraController>();
+        if (cam != null) cam.Shake(0.3f, 0.2f); // Rung mạnh hơn khi chết
+        
+        // --- [GAME FEEL] Dừng hình tại nạn nhân (Cảm giác kịch tính) ---
+        PerformLocalHitStop(0.15f);
+
         // Báo Animator nằm xuống đất
         GetComponent<PlayerAnimator>()?.Rpc_TriggerKnockdown();
+
+        // [MỚI] Gọi VFX Nổ lớn khi chết
+        if (HitEffectManager.Instance != null)
+        {
+            HitEffectManager.Instance.SpawnDeathEffect(transform.position + Vector3.up * 1f);
+        }
 
         // Xóa thanh máu tạm thời
         if (FloatingUIManager.Instance != null)
@@ -216,6 +260,13 @@ public class HealthSystem : NetworkBehaviour
                     // Được quyền tự do thao tác sửa máu/kill vì mình LÀ CHỦ NHÂN thực sự trên máy tính này
                     hp.Kills += 1;
                     
+                    // --- [GAME FEEL] Dừng hình tại sát thủ (Cảm giác cực sướng) ---
+                    PerformLocalHitStop(0.15f);
+                    
+                    // --- [GAME FEEL] Rung màn hình mạnh cho sát thủ ---
+                    var cam = Camera.main?.GetComponent<CameraController>();
+                    if (cam != null) cam.Shake(0.3f, 0.15f);
+
                     // GỘP NGAY ĐIỂM SỐ LÊN MÁY CHỦ BẢNG XẾP HẠNG MICROSOFT ĐÁM MÂY!
                     if (PlayFabManager.Instance != null)
                     {
@@ -230,6 +281,17 @@ public class HealthSystem : NetworkBehaviour
                 }
             }
         }
+    }
+
+    private async void PerformLocalHitStop(float duration)
+    {
+        // Chỉ chạy LOCAL trên từng máy tính, không ảnh hưởng đến Server hay người chơi khác
+        Time.timeScale = 0.05f; // Khựng lại gần như đứng im (giữ 0.05 để anim vẫn nhích nhẹ cho đẹp)
+        
+        // Đợi theo thời gian thực (vì timeScale đã bị dừng)
+        await System.Threading.Tasks.Task.Delay(System.TimeSpan.FromSeconds(duration));
+        
+        Time.timeScale = 1.0f; // Trả lại thời gian bình thường
     }
 
     private void Respawn()

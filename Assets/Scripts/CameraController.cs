@@ -70,6 +70,9 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    private Vector3 _shakeOffset;
+    private Coroutine _shakeCoroutine;
+
     private void LateUpdate()
     {
         if (_target == null || !_active) return;
@@ -77,8 +80,37 @@ public class CameraController : MonoBehaviour
         Quaternion rotation = Quaternion.Euler(_pitch, _yaw, 0f);
         Vector3 desiredPos = _target.position + rotation * offset;
 
-        transform.position = Vector3.Lerp(transform.position, desiredPos, Time.deltaTime * smoothSpeed);
+        // Nội suy vị trí Camera mượt mà
+        transform.position = Vector3.Lerp(transform.position, desiredPos, Time.deltaTime * smoothSpeed) + _shakeOffset;
+        
+        // Luôn nhìn vào phía trên đầu nhân vật một chút
         transform.LookAt(_target.position + Vector3.up * 1.2f);
+    }
+
+    /// <summary>
+    /// Kích hoạt rung màn hình theo thời gian và cường độ chỉ định.
+    /// </summary>
+    public void Shake(float duration, float magnitude)
+    {
+        if (_shakeCoroutine != null) StopCoroutine(_shakeCoroutine);
+        _shakeCoroutine = StartCoroutine(DoShake(duration, magnitude));
+    }
+
+    private System.Collections.IEnumerator DoShake(float duration, float magnitude)
+    {
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            // Tạo độ lệch ngẫu nhiên trong vòng tròn đơn vị
+            Vector2 randomPoint = Random.insideUnitCircle * magnitude;
+            _shakeOffset = new Vector3(randomPoint.x, randomPoint.y, 0f);
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        _shakeOffset = Vector3.zero;
+        _shakeCoroutine = null;
     }
 
     private void LockCursor(bool locked)
