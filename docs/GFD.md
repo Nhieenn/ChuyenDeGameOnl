@@ -23,7 +23,20 @@ status: "Draft"
 |-----------------|--------------|----------------|------------------------|---------|
 | **Trúng đòn (Hit)** | Tia lửa + Chớp đỏ viền | Rung nhẹ (Light) | Không (Dùng anim) | Để duy trì nhịp độ |
 | **Bị hạ gục (Death)** | Nổ hạt lớn + Mờ dần | Rung mạnh (Heavy) | **Dừng 0.15s** (Final Blow) | Điểm nhấn uy lực |
+| **Kích hoạt Nộ (Rage)**| Lửa vây quanh + Viền Cam | Không | Không | Tăng cường hưng phấn |
 | **Hồi sinh (Respawn)** | Hiệu ứng hào quang | Không | Không | |
+| **Đỡ đòn (Block)** | Tia lửa nhẹ + Khiên | Không | Không | Giảm 50% DMG |
+
+---
+
+## 2.1 Chi tiết Hoạt ảnh Trúng đòn (Hit Direction Mapping)
+Để hoạt ảnh trúng đòn trông chân thực, tham số `HitX` trong Animator được tính toán dựa trên hướng đòn đánh:
+- **0.0 - Front**: Bị đánh từ phía trước.
+- **1.0 - Right**: Bị đánh từ bên phải.
+- **2.0 - Back**: Bị đánh từ phía sau.
+- **3.0 - Left**: Bị đánh từ bên trái.
+
+*Lưu ý: Nếu sử dụng Blend Tree, hãy đặt các Motion tương ứng tại các mốc giá trị này.*
 
 ---
 

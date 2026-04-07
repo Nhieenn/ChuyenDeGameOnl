@@ -18,7 +18,8 @@ public class HUDController : MonoBehaviour
     public Color color = Color.white;
 
     private VisualElement _root;
-    private VisualElement _vignette; // Hiệu ứng viền đỏ khi bị đau
+    private VisualElement _vignette; // Hiệu ứng viền đỏ khi bị đau (Hit)
+    private VisualElement _rageVignette; // Hiệu ứng viền cam khi đang Nộ (Rage)
     private Label _kdaLabel;
     private Label _timerLabel; // Đồng hồ đếm lùi Match Time
     
@@ -64,6 +65,20 @@ public class HUDController : MonoBehaviour
         _vignette.style.borderTopWidth = _vignette.style.borderBottomWidth = 80;
         _vignette.style.opacity = 0;
         _root.Add(_vignette);
+
+        // Khởi tạo Viền Cam (Rage) - Ban đầu ẩn
+        _rageVignette = new VisualElement { name = "rage-vignette" };
+        _rageVignette.pickingMode = PickingMode.Ignore;
+        _rageVignette.style.position = Position.Absolute;
+        _rageVignette.style.width = new Length(100, LengthUnit.Percent);
+        _rageVignette.style.height = new Length(100, LengthUnit.Percent);
+        // Màu cam cháy đậm cho Nộ
+        var rageColor = new Color(1f, 0.4f, 0f, 0.2f); 
+        _rageVignette.style.borderLeftColor = _rageVignette.style.borderRightColor = _rageVignette.style.borderTopColor = _rageVignette.style.borderBottomColor = rageColor;
+        _rageVignette.style.borderLeftWidth = _rageVignette.style.borderRightWidth = 120;
+        _rageVignette.style.borderTopWidth = _rageVignette.style.borderBottomWidth = 100;
+        _rageVignette.style.opacity = 0;
+        _root.Add(_rageVignette);
 
         BuildCrosshair(hudContainer);
         BuildKDA_Board(hudContainer);
@@ -149,6 +164,15 @@ public class HUDController : MonoBehaviour
             if (hp.Object != null && hp.Object.InputAuthority == myPlayerRef)
             {
                 _kdaLabel.text = $"K/D: {hp.Kills} / {hp.Deaths}";
+                
+                // --- CẬP NHẬT HIỆU ỨNG MÀN HÌNH NỘ (Rage Overlay) ---
+                var rage = hp.GetComponent<RageSystem>();
+                if (rage != null && _rageVignette != null)
+                {
+                    // Tạo nhịp đập cho viền cam nộ
+                    float pulse = 0.7f + 0.3f * Mathf.Sin(Time.time * 8f); 
+                    _rageVignette.style.opacity = rage.IsRaging ? pulse : 0f;
+                }
                 break;
             }
         }

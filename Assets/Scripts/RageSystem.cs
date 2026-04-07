@@ -35,6 +35,16 @@ public class RageSystem : NetworkBehaviour
         }
     }
 
+    public override void Render()
+    {
+        // [FIX BUG] Đảm bảo tạo Thanh Nộ An Toàn bằng cách xác minh trực tiếp với UI Manager mỗi frame đồ họa
+        // Giúp Client vào sau vẫn thấy thanh nộ của mình nếu Spawned() chạy quá sớm khi UI chưa load xong
+        if (FloatingUIManager.Instance != null && !FloatingUIManager.Instance.HasRegisteredRage(this))
+        {
+            FloatingUIManager.Instance.UpdateRage(this, CurrentRage, maxRage);
+        }
+    }
+
     public override void FixedUpdateNetwork()
     {
         if (!Object.HasStateAuthority) return;

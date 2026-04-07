@@ -113,7 +113,15 @@ public class HealthSystem : NetworkBehaviour
         else hitX = 2f; // Bị đấm sau lưng (Back) -> Mình ngã nhào tới trước
 
         // Báo cho Animator giật người
-        GetComponent<PlayerAnimator>()?.TriggerHit(hitX);
+        var anim = GetComponent<PlayerAnimator>();
+        if (anim != null)
+        {
+            anim.TriggerHit(hitX);
+        }
+
+        // --- [GAME FEEL] Dừng hình nhẹ khi bị đánh (Hitstop) ---
+        // Giúp đòn đánh có cảm giác "dính" và nặng nề hơn
+        if (!isHitOnShield) PerformLocalHitStop(0.05f); 
 
         // Kiểm tra Hết Thể Lực -> Bị Choáng! (Tính năng "Vỡ Khiên" ăn theo logic này cực kì hoàn hảo)
         if (stamina != null && stamina.IsExhausted && !stamina.IsStunned)
@@ -222,10 +230,10 @@ public class HealthSystem : NetworkBehaviour
 
         // --- [GAME FEEL] Chấn động chốt hạ ---
         var cam = Camera.main?.GetComponent<CameraController>();
-        if (cam != null) cam.Shake(0.3f, 0.2f); // Rung mạnh hơn khi chết
+        if (cam != null) cam.Shake(0.4f, 0.25f); // Rung mạnh hơn khi chết
         
         // --- [GAME FEEL] Dừng hình tại nạn nhân (Cảm giác kịch tính) ---
-        PerformLocalHitStop(0.15f);
+        PerformLocalHitStop(0.2f); // Tăng lên 0.2s cho đòn kết liễu
 
         // Báo Animator nằm xuống đất
         GetComponent<PlayerAnimator>()?.Rpc_TriggerKnockdown();

@@ -23,6 +23,7 @@ public class FloatingUIManager : MonoBehaviour
     private VisualElement _bloodyScreen;
     private float _targetBloodAlpha = 0f;
     private float _currentBloodAlpha = 0f;
+    private Camera _cachedCam;
 
     private void Awake()
     {
@@ -223,6 +224,11 @@ public class FloatingUIManager : MonoBehaviour
     /// </summary>
     public void UpdateRage(RageSystem rage, float currentRg, float maxRg)
     {
+        // Tự động gán lại root nếu lỡ bị thất lạc lúc đầu (thường gặp trong bản build)
+        if (_root == null && _uiDoc != null) _root = _uiDoc.rootVisualElement;
+        
+        if (_root == null) return;
+
         if (!_rageBars.TryGetValue(rage, out var rgElement))
         {
             Debug.Log($"[FloatingUIManager] Đang tạo thanh nộ dọc cho: {rage.gameObject.name}");
@@ -295,11 +301,15 @@ public class FloatingUIManager : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (Camera.main == null)
+        // TÌM CAMERA THÔNG MINH HƠN:
+        if (_cachedCam == null || !_cachedCam.gameObject.activeInHierarchy)
         {
-            // Debug.LogWarning("[FloatingUIManager] Không tìm thấy Camera.main!");
-            return;
+            _cachedCam = Camera.main;
+            if (_cachedCam == null) _cachedCam = FindFirstObjectByType<Camera>();
         }
+
+        if (_cachedCam == null) return;
+
         if (_root == null || _root.panel == null)
         {
             return;
@@ -322,18 +332,22 @@ public class FloatingUIManager : MonoBehaviour
             // Vị trí trên đỉnh đầu nhân vật (cao lên 2.2 units)
             Vector3 worldPos = health.transform.position + Vector3.up * 2.2f;
 
-            // Kiểm tra xem vị trí đó có nằm sau lưng camera không
-            Vector3 viewportPos = Camera.main.WorldToViewportPoint(worldPos);
-            if (viewportPos.z < 0)
+            // XỬ LÝ LỖI EXE: Nếu là nhân vật chính, ta đẩy nhẹ vị trí ra xa Camera một chút 
+            // để tránh bị "nhảy" vào vùng cấm (Near Clip Plane) gây ra tọa độ (0,0)
+            bool isLocal = (health.Object != null && health.Object.HasInputAuthority);
+            if (isLocal) worldPos += _cachedCam.transform.forward * 0.5f;
+
+            Vector3 viewportPos = _cachedCam.WorldToViewportPoint(worldPos);
+            
+            if (viewportPos.z < 0 && !isLocal) 
             {
                 element.style.display = DisplayStyle.None;
                 continue;
             }
             element.style.display = DisplayStyle.Flex;
 
-            // UI Toolkit API: Đổi tọa độ Thế Giới thành tọa độ UI Panel
             Vector2 uiPos = RuntimePanelUtils.CameraTransformWorldToPanel(
-                _root.panel, worldPos, Camera.main
+                _root.panel, worldPos, _cachedCam
             );
 
             // Căn giữa thanh máu (offset nửa chiều rộng và nửa chiều cao)
@@ -341,7 +355,6 @@ public class FloatingUIManager : MonoBehaviour
             element.style.top = uiPos.y - 8f;
         }
 
-        // --- CẬP NHẬT TỌA ĐỘ THANH THỂ LỰC ---
         foreach (var kvp in _staminaBars)
         {
             var stamina = kvp.Key;
@@ -349,19 +362,21 @@ public class FloatingUIManager : MonoBehaviour
 
             // Nằm thấp hơn thanh máu một chút
             Vector3 worldPos = stamina.transform.position + Vector3.up * 2.1f;
-            Vector3 viewportPos = Camera.main.WorldToViewportPoint(worldPos);
-            if (viewportPos.z < 0)
+            
+            // XỬ LÝ LỖI EXE: Đẩy nhẹ ra xa Camera nếu là Local Player
+            bool isLocal = (stamina.Object != null && stamina.Object.HasInputAuthority);
+            if (isLocal) worldPos += _cachedCam.transform.forward * 0.4f;
+
+            Vector3 viewportPos = _cachedCam.WorldToViewportPoint(worldPos);
+            if (viewportPos.z < 0 && !isLocal)
             {
                 element.style.display = DisplayStyle.None;
                 continue;
             }
             element.style.display = DisplayStyle.Flex;
 
-            Vector2 uiPos = RuntimePanelUtils.CameraTransformWorldToPanel(
-                _root.panel, worldPos, Camera.main
-            );
+            Vector2 uiPos = RuntimePanelUtils.CameraTransformWorldToPanel(_root.panel, worldPos, _cachedCam);
 
-            // Rộng 100px nên căn giữa là -50f
             element.style.left = uiPos.x - 50f; 
             element.style.top = uiPos.y; 
         }
@@ -377,15 +392,41 @@ public class FloatingUIManager : MonoBehaviour
             // Đặt thanh nộ ở vị trí ngang hông (up * 1.0f) và lệch phải (right * 0.7f)
             Vector3 worldPos = rage.transform.position + (Vector3.up * 1.0f) + (rage.transform.right * 0.7f);
 
-            Vector3 viewportPos = Camera.main.WorldToViewportPoint(worldPos);
-            if (viewportPos.z < 0) { element.style.display = DisplayStyle.None; continue; }
+            // XỬ LÝ LỖI EXE: Đẩy nhẹ ra xa Camera nếu là Local Player
+            bool isLocal = (rage.Object != null && rage.Object.HasInputAuthority);
+            if (isLocal) worldPos += _cachedCam.transform.forward * 0.3f;
+
+            Vector3 viewportPos = _cachedCam.WorldToViewportPoint(worldPos);
+            if (viewportPos.z < 0 && !isLocal) { element.style.display = DisplayStyle.None; continue; }
             element.style.display = DisplayStyle.Flex;
 
-            Vector2 uiPos = RuntimePanelUtils.CameraTransformWorldToPanel(_root.panel, worldPos, Camera.main);
+            Vector2 uiPos = RuntimePanelUtils.CameraTransformWorldToPanel(_root.panel, worldPos, _cachedCam);
             
             element.style.left = uiPos.x; 
-            element.style.top = uiPos.y - 32f; // Căn giữa thanh dọc (65px / 2)
+            element.style.top = uiPos.y - 32f; 
         }
     }
 
+    private void OnGUI()
+    {
+        GUIStyle style = new GUIStyle();
+        style.fontSize = 18;
+        style.normal.textColor = Color.green;
+
+        float y = 10;
+        GUI.Label(new Rect(10, y, 600, 25), $"[UI DEBUG] Root: {(_root != null ? "SẴN SÀNG" : "NULL")}", style); y += 25;
+        GUI.Label(new Rect(10, y, 600, 25), $"[UI DEBUG] Camera: {(_cachedCam != null ? _cachedCam.name : "NULL")}", style); y += 25;
+        GUI.Label(new Rect(10, y, 600, 25), $"[UI DEBUG] Cam Pos: {(_cachedCam != null ? _cachedCam.transform.position.ToString() : "N/A")}", style); y += 25;
+        GUI.Label(new Rect(10, y, 600, 25), $"[UI DEBUG] Rage Bars Count: {_rageBars.Count}", style); y += 25;
+
+        foreach (var kvp in _rageBars)
+        {
+            var rage = kvp.Key;
+            if (rage == null) continue;
+            bool isLocal = (rage.Object != null && rage.Object.HasInputAuthority);
+            Vector3 vPos = _cachedCam != null ? _cachedCam.WorldToViewportPoint(rage.transform.position) : Vector3.zero;
+            GUI.Label(new Rect(30, y, 600, 25), $"- [{rage.gameObject.name}] {(isLocal ? "<-- BỒ ĐẤY!" : "")} | Z: {vPos.z:F2} | Val: {kvp.Key.CurrentRage:F1}", style);
+            y += 25;
+        }
+    }
 }

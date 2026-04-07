@@ -17,7 +17,7 @@ public class PlayerAnimator : NetworkBehaviour
     private static readonly int Trigger    = Animator.StringToHash("Trigger");
     private static readonly int TriggerNum = Animator.StringToHash("TriggerNumber");
     private static readonly int HitHash    = Animator.StringToHash("Hit");
-    private static readonly int HitDirHash = Animator.StringToHash("HitX");
+    private static readonly int HitXHash   = Animator.StringToHash("HitX");
     private static readonly int KnockHash  = Animator.StringToHash("Knockdown");
     private static readonly int GetUpHash  = Animator.StringToHash("GetUp");
     private static readonly int RollHash   = Animator.StringToHash("Roll");
@@ -27,6 +27,10 @@ public class PlayerAnimator : NetworkBehaviour
     [Header("Weapon Models")]
     [SerializeField] private GameObject unarmedVisual; // Model tay không
     [SerializeField] private GameObject swordVisual;   // Model kiếm (2Hand-Sword)
+    
+    // [OPTIMIZATION] Lưu lại trạng thái Nộ trước đó để chỉ swap model khi thực sự cần thiết
+    private bool _lastRagingState;
+    private bool _isInitialized;
 
     // State animation gửi qua network
     [Networked] private NetworkBool NetMoving  { get; set; }
@@ -42,6 +46,12 @@ public class PlayerAnimator : NetworkBehaviour
 
     private void UpdateVisuals(bool isRaging)
     {
+        // Chỉ chạy nếu trạng thái thay đổi HOẶC chưa được khởi tạo lần đầu
+        if (_isInitialized && isRaging == _lastRagingState) return;
+        
+        _lastRagingState = isRaging;
+        _isInitialized = true;
+
         if (unarmedVisual != null) unarmedVisual.SetActive(!isRaging);
         if (swordVisual != null) swordVisual.SetActive(isRaging);
 
@@ -52,6 +62,8 @@ public class PlayerAnimator : NetworkBehaviour
 
         // Nếu model con không có Animator, thử lấy ở root
         if (_animator == null) _animator = GetComponentInChildren<Animator>();
+        
+        Debug.Log($"[PlayerAnimator] Đã hoán đổi Visual thành: {(isRaging ? "Sword" : "Unarmed")}");
     }
 
     /// <summary>Gọi từ PlayerMovement mỗi FixedUpdateNetwork</summary>
@@ -90,7 +102,7 @@ public class PlayerAnimator : NetworkBehaviour
     {
         if (_animator != null)
         {
-            _animator.SetFloat(HitDirHash, hitDirection);
+            _animator.SetFloat(HitXHash, hitDirection);
             _animator.SetTrigger(HitHash);
         }
     }
@@ -144,6 +156,13 @@ public class PlayerAnimator : NetworkBehaviour
             {
                 _animator.SetBool(RagingHash, isRaging);
                 
+                // [MỚI] Điều chỉnh Weight của Layer để tránh bị đè hoạt ảnh Idle
+                int swordLayerIndex = _animator.GetLayerIndex("Sword Layer");
+                if (swordLayerIndex != -1)
+                {
+                    _animator.SetLayerWeight(swordLayerIndex, isRaging ? 1f : 0f);
+                }
+
                 // Truyền các Parameter trạng thái liên tục
                 _animator.SetFloat(VelocityX, NetVelX); 
                 _animator.SetFloat(VelocityZ, NetVelZ);
