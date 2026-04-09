@@ -14,6 +14,9 @@ public class HealthSystem : NetworkBehaviour
     [Networked, OnChangedRender(nameof(OnHealthChanged))]
     public float CurrentHealth { get; set; }
 
+    [Networked, OnChangedRender(nameof(OnRageHealthChanged))]
+    public float CurrentRageHealth { get; set; }
+
     [Networked] public int Kills { get; set; }
     [Networked] public int Deaths { get; set; }
     [Networked] public NetworkBool IsDead { get; set; }
@@ -77,13 +80,13 @@ public class HealthSystem : NetworkBehaviour
                 stamina.ConsumeStamina(15f);
             }
             
-            // Đỡ đòn thành công sẽ tích nộ rất nhanh (10 điểm)
-            if (rage != null) rage.AddRage(10f);
+            // Đỡ đòn thành công sẽ tích nộ vừa phải (6 điểm)
+            if (rage != null) rage.AddRage(6f);
         }
         else
         {
-            // Bị trúng đòn trực diện tích nộ vừa phải (8 điểm)
-            if (rage != null) rage.AddRage(8f);
+            // Bị trúng đòn trực diện tích nộ chậm (4 điểm)
+            if (rage != null) rage.AddRage(4f);
         }
 
         // Xử lý nảy lùi lại (Knockback)
@@ -129,6 +132,22 @@ public class HealthSystem : NetworkBehaviour
             stamina.TriggerExhaustionStun();
         }
 
+        // [MỚI] HỆ THỐNG GIÁP NỘ (VOID SHIELD)
+        // Ưu tiên trừ vào máu ảo (200 HP) trước khi chạm vào máu thật
+        if (CurrentRageHealth > 0)
+        {
+            float shieldDamage = Mathf.Min(damage, CurrentRageHealth);
+            CurrentRageHealth -= shieldDamage;
+            damage -= shieldDamage; // Sát thương dư sẽ trừ tiếp vào máu thật
+
+            // Nếu giáp nộ bị đánh vỡ -> Ép thoát Nộ ngay lập tức
+            if (CurrentRageHealth <= 0)
+            {
+                rage?.ForceExitRage();
+                Debug.Log("[HealthSystem] Giáp Nộ đã vỡ! Thoát trạng thái Nộ!");
+            }
+        }
+
         CurrentHealth -= damage;
 
         // Nếu máu tụt xuống 0 thì xử lý chết (Nếu Nộ thì không chết mà sẽ bị Gục cưỡng bức)
@@ -147,6 +166,15 @@ public class HealthSystem : NetworkBehaviour
             {
                 Die(attackerRef);
             }
+        }
+    }
+
+    private void OnRageHealthChanged()
+    {
+        // Cập nhật UI ngay lập tức khi giáp nộ thay đổi
+        if (FloatingUIManager.Instance != null)
+        {
+            FloatingUIManager.Instance.UpdateHealth(this, CurrentHealth, maxHealth);
         }
     }
 

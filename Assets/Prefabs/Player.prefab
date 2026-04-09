@@ -226,6 +226,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MeleeAttack
   attackRange: 1.8
+  rageAttackRange: 3.8
   attackRate: 0.7
   hitLayers:
     serializedVersion: 2
@@ -258,6 +259,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HealthSystem
   maxHealth: 100
   _CurrentHealth: 100
+  _CurrentRageHealth: 0
   _Kills: 0
   _Deaths: 0
   _IsDead:
@@ -308,7 +310,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RageSystem
   maxRage: 100
-  rageDrainRate: 12
+  rageDrainRate: 6.67
   _CurrentRage: 0
   _IsRaging:
     _value: 0

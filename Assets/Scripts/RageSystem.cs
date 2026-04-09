@@ -10,7 +10,7 @@ public class RageSystem : NetworkBehaviour
 {
     [Header("Rage Settings")]
     public float maxRage = 100f;
-    public float rageDrainRate = 12f; // Mất 12 điểm nộ mỗi giây khi đang Nộ (tầm 8-9s)
+    public float rageDrainRate = 6.67f; // Mất 6.67 điểm nộ mỗi giây (Đúng 15s cho 100 nộ)
 
     [Networked, OnChangedRender(nameof(OnRageChanged))]
     public float CurrentRage { get; set; }
@@ -52,11 +52,13 @@ public class RageSystem : NetworkBehaviour
         // 1. Logic Tiêu hao Nộ khi đang kích hoạt
         if (IsRaging)
         {
+            var health = GetComponent<HealthSystem>();
             CurrentRage -= rageDrainRate * Runner.DeltaTime;
-            if (CurrentRage <= 0)
+            if (CurrentRageHealthExpired(health))
             {
                 CurrentRage = 0;
-                IsRaging = false; // Tự động thoát Nộ khi hết điểm
+                IsRaging = false; // Tự động thoát Nộ khi hết điểm hoặc hết máu ảo
+                if (health != null) health.CurrentRageHealth = 0;
             }
         }
         else
@@ -86,11 +88,15 @@ public class RageSystem : NetworkBehaviour
     {
         IsRaging = true;
         
-        // Hồi đầy máu ngay lập tức khi kích hoạt (Cơ hội lật kèo)
+        // Hồi thêm 25% máu tối đa khi kích hoạt (Cân bằng lại từ 100% xuống 25%)
         var health = GetComponent<HealthSystem>();
         if (health != null)
         {
-            health.CurrentHealth = health.maxHealth;
+            float healAmount = health.maxHealth * 0.25f;
+            health.CurrentHealth = Mathf.Min(health.maxHealth, health.CurrentHealth + healAmount);
+            
+            // [MỚI] Cấp Giáp Nộ 200 HP
+            health.CurrentRageHealth = 200f;
         }
 
         Debug.Log("[RageSystem] RAGNAAAAAROOOOK! Kích hoạt Nộ!");
@@ -116,7 +122,17 @@ public class RageSystem : NetworkBehaviour
         {
             IsRaging = false;
             CurrentRage = 0;
+            
+            // Xóa giáp nộ
+            var health = GetComponent<HealthSystem>();
+            if (health != null) health.CurrentRageHealth = 0;
         }
+    }
+
+    private bool CurrentRageHealthExpired(HealthSystem health)
+    {
+        // Thoát nộ nếu hết thời gian HOẶC hết máu ảo (đã xử lý ở HealthSystem)
+        return CurrentRage <= 0;
     }
 
     private void OnRageChanged()

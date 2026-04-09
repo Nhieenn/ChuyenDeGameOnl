@@ -72,8 +72,8 @@ public class HUDController : MonoBehaviour
         _rageVignette.style.position = Position.Absolute;
         _rageVignette.style.width = new Length(100, LengthUnit.Percent);
         _rageVignette.style.height = new Length(100, LengthUnit.Percent);
-        // Màu cam cháy đậm cho Nộ
-        var rageColor = new Color(1f, 0.4f, 0f, 0.2f); 
+        // Màu vàng cam rực (Gold/Fire) để phân biệt rõ với viền đỏ của máu
+        var rageColor = new Color(1f, 0.65f, 0f, 0.3f); 
         _rageVignette.style.borderLeftColor = _rageVignette.style.borderRightColor = _rageVignette.style.borderTopColor = _rageVignette.style.borderBottomColor = rageColor;
         _rageVignette.style.borderLeftWidth = _rageVignette.style.borderRightWidth = 120;
         _rageVignette.style.borderTopWidth = _rageVignette.style.borderBottomWidth = 100;
@@ -169,8 +169,8 @@ public class HUDController : MonoBehaviour
                 var rage = hp.GetComponent<RageSystem>();
                 if (rage != null && _rageVignette != null)
                 {
-                    // Tạo nhịp đập cho viền cam nộ
-                    float pulse = 0.7f + 0.3f * Mathf.Sin(Time.time * 8f); 
+                    // Tạo nhịp đập nhanh, mạnh mẽ cho viền nộ (khác với nhịp tim chậm của máu yếu)
+                    float pulse = 0.6f + 0.4f * Mathf.Sin(Time.time * 12f); 
                     _rageVignette.style.opacity = rage.IsRaging ? pulse : 0f;
                 }
                 break;

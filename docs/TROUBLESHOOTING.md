@@ -48,4 +48,21 @@ Sử dụng chuẩn Shader của URP: `Universal Render Pipeline/Lit` và cập 
 
 ---
 
+## 3. Lỗi Hoạt ảnh bị khựng/giật (Animator Stuttering)
+
+### Triệu chứng
+- Nhân vật bị giật frame đầu (nháy) khi bắt đầu thực hiện đòn tấn công.
+- Khi nhấn nút đánh liên tục, hoạt ảnh không chơi mượt mà (Combo không ra đủ) mà cứ lặp đi lặp lại những frame đầu tiên.
+
+### Nguyên nhân
+- **Can Transition To Self**: Trong Animator, các đường nối từ **Any State** đến các đòn tấn công nếu để tích ô này sẽ cho phép trạng thái nhảy vào chính nó.
+- Khi Trigger `Attack` được gửi liên tục, Animator sẽ khởi động lại (Reset) animation về Frame 0 ở mỗi lần trigger, gây ra hiện tượng giật máy.
+
+### Giải pháp
+1. Chọn Transition nối từ **Any State** đến trạng thái bị khựng.
+2. **Bỏ tích** ô `Can Transition To Self`. Điều này bắt buộc Animator phải chơi hết hoạt ảnh hiện tại hoặc chờ một trạng thái khác can thiệp.
+3. Giảm **Transition Duration** xuống mức thấp (0.05 - 0.1) để đòn đánh thoát ra nhanh và nhạy hơn.
+
+---
+
 *(Tiếp tục cập nhật khi phát hiện lỗi mới...)*

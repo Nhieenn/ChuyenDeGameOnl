@@ -275,21 +275,35 @@ public class FloatingUIManager : MonoBehaviour
         if (_healthBars.TryGetValue(health, out var element))
         {
             var fill = element.Q<VisualElement>("fill");
-            float percent = Mathf.Clamp01(currentHp / maxHp) * 100f;
-            fill.style.width = Length.Percent(percent);
+            float percent = 0f;
 
-            // Đổi màu tùy theo mức máu
-            if (percent > 60) fill.style.backgroundColor = new Color(0.2f, 0.8f, 0.2f);
-            else if (percent > 30) fill.style.backgroundColor = new Color(0.9f, 0.7f, 0.1f);
-            else fill.style.backgroundColor = new Color(0.9f, 0.2f, 0.2f);
+            // [MỚI] ƯU TIÊN HIỂN THỊ GIÁP NỘ (MÀU TÍM, MỐC 200, DÀI HƠN)
+            if (health.CurrentRageHealth > 0)
+            {
+                element.style.width = 220; // Dãn dài thanh máu cho hoành tráng
+                percent = Mathf.Clamp01(health.CurrentRageHealth / 200f) * 100f;
+                fill.style.backgroundColor = new Color(0.6f, 0.2f, 0.9f); // Màu Tím Vibrant
+            }
+            else
+            {
+                element.style.width = 120; // Co lại kích thước thường
+                percent = Mathf.Clamp01(currentHp / maxHp) * 100f;
+                
+                // Đổi màu tùy theo mức máu gốc
+                if (percent > 60) fill.style.backgroundColor = new Color(0.2f, 0.8f, 0.2f);
+                else if (percent > 30) fill.style.backgroundColor = new Color(0.9f, 0.7f, 0.1f);
+                else fill.style.backgroundColor = new Color(0.9f, 0.2f, 0.2f);
+            }
+
+            fill.style.width = Length.Percent(percent);
             
             // Xử lý hiệu ứng chớp mép màn hình nếu đây là nhân vật của người chơi này (Local Player)
             if (health.HasInputAuthority)
             {
-                if (percent <= 30f && currentHp > 0)
+                float normalPercent = Mathf.Clamp01(currentHp / maxHp) * 100f;
+                if (normalPercent <= 30f && currentHp > 0)
                 {
-                    // Càng thấp máu thì mức TargetAlpha càng đậm (tối đa 1.0)
-                    _targetBloodAlpha = 1f - (percent / 30f);
+                    _targetBloodAlpha = 1f - (normalPercent / 30f);
                 }
                 else
                 {
@@ -350,8 +364,12 @@ public class FloatingUIManager : MonoBehaviour
                 _root.panel, worldPos, _cachedCam
             );
 
-            // Căn giữa thanh máu (offset nửa chiều rộng và nửa chiều cao)
-            element.style.left = uiPos.x - 60f; 
+            // Căn giữa thanh máu dựa trên chiều rộng thực tế (resolvedStyle.width) 
+            // Điều này giúp thanh máu luôn cân bằng kể cả khi dài 120px hay 220px
+            float barWidth = element.resolvedStyle.width;
+            if (barWidth <= 0) barWidth = (health.CurrentRageHealth > 0) ? 220f : 120f; // Fallback nếu UI chưa render xong
+            
+            element.style.left = uiPos.x - (barWidth / 2f); 
             element.style.top = uiPos.y - 8f;
         }
 
@@ -400,10 +418,26 @@ public class FloatingUIManager : MonoBehaviour
             if (viewportPos.z < 0 && !isLocal) { element.style.display = DisplayStyle.None; continue; }
             element.style.display = DisplayStyle.Flex;
 
+            // --- CẬP NHẬT TỌA ĐỘ VÀ HIỆU ỨNG NHẤP NHÁY ---
             Vector2 uiPos = RuntimePanelUtils.CameraTransformWorldToPanel(_root.panel, worldPos, _cachedCam);
-            
             element.style.left = uiPos.x; 
             element.style.top = uiPos.y - 32f; 
+
+            // [MỚI] Hiệu ứng Nhấp nháy khi nộ sắp hết (Dưới 20%)
+            var fill = element.Q<VisualElement>("rg_fill");
+            if (fill != null)
+            {
+                float percent = (rage.maxRage > 0) ? (rage.CurrentRage / rage.maxRage * 100f) : 0f;
+                if (rage.IsRaging && percent < 20f)
+                {
+                    float flash = 0.4f + 0.6f * Mathf.Sin(Time.time * 20f);
+                    fill.style.opacity = flash;
+                }
+                else
+                {
+                    fill.style.opacity = 1f;
+                }
+            }
         }
     }
 
