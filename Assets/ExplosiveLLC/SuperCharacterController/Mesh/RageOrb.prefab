@@ -15,6 +15,8 @@ GameObject:
   - component: {fileID: 5395240021611357961}
   - component: {fileID: 488049130078079641}
   - component: {fileID: 2352893614315140788}
+  - component: {fileID: 3308506883966063678}
+  - component: {fileID: -5607488902139719698}
   m_Layer: 0
   m_Name: RageOrb
   m_TagString: Untagged
@@ -159,8 +161,8 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 0
-  m_CollisionDetection: 0
+  m_Constraints: 112
+  m_CollisionDetection: 1
 --- !u!114 &2352893614315140788
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -176,3 +178,45 @@ MonoBehaviour:
   type: 1
   amount: 25
   _renderer: {fileID: 3850922766339321370}
+  pickupVFX: {fileID: 0}
+  pickupSFX: {fileID: 0}
+--- !u!135 &3308506883966063678
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8933641129308265848}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 1
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &-5607488902139719698
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8933641129308265848}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38c814e75dfb8b1419e65f11edcbaad5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OrbVisuals
+  bobSpeed: 2
+  bobAmount: 0.2
+  rotateSpeed: 60
+  orbLight: {fileID: 0}
+  minIntensity: 1
+  maxIntensity: 3
+  pulseSpeed: 1.5

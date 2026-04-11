@@ -448,10 +448,6 @@ public class FloatingUIManager : MonoBehaviour
         style.normal.textColor = Color.green;
 
         float y = 10;
-        GUI.Label(new Rect(10, y, 600, 25), $"[UI DEBUG] Root: {(_root != null ? "SẴN SÀNG" : "NULL")}", style); y += 25;
-        GUI.Label(new Rect(10, y, 600, 25), $"[UI DEBUG] Camera: {(_cachedCam != null ? _cachedCam.name : "NULL")}", style); y += 25;
-        GUI.Label(new Rect(10, y, 600, 25), $"[UI DEBUG] Cam Pos: {(_cachedCam != null ? _cachedCam.transform.position.ToString() : "N/A")}", style); y += 25;
-        GUI.Label(new Rect(10, y, 600, 25), $"[UI DEBUG] Rage Bars Count: {_rageBars.Count}", style); y += 25;
 
         foreach (var kvp in _rageBars)
         {
@@ -459,7 +455,6 @@ public class FloatingUIManager : MonoBehaviour
             if (rage == null) continue;
             bool isLocal = (rage.Object != null && rage.Object.HasInputAuthority);
             Vector3 vPos = _cachedCam != null ? _cachedCam.WorldToViewportPoint(rage.transform.position) : Vector3.zero;
-            GUI.Label(new Rect(30, y, 600, 25), $"- [{rage.gameObject.name}] {(isLocal ? "<-- BỒ ĐẤY!" : "")} | Z: {vPos.z:F2} | Val: {kvp.Key.CurrentRage:F1}", style);
             y += 25;
         }
     }

@@ -17,6 +17,10 @@ public class MeleeAttack : NetworkBehaviour
     [Tooltip("Layer bị ảnh hưởng (để trống = tất cả)")]
     public LayerMask hitLayers = ~0;
 
+    [Header("Special Skills")]
+    [Tooltip("Prefab Sóng Kiếm (chỉ phóng ra ở đòn 4 khi Nộ)")]
+    public NetworkObject swordWavePrefab;
+
 
     [Networked] private TickTimer _cooldown { get; set; }
     [Networked] private NetworkBool _canHit { get; set; } // Chốt chặn: 1 Click chỉ được 1 Hit sát thương
@@ -70,6 +74,14 @@ public class MeleeAttack : NetworkBehaviour
                 
                 _comboIndex++;
                 _anim?.TriggerAttack(triggerNum);
+
+                /* [TẠM KHÓA] Phóng Kiếm Khí ở đòn 4
+                if (isRaging && triggerNum == 4 && swordWavePrefab != null)
+                {
+                    Vector3 spawnPos = transform.position + transform.forward * 1.5f + Vector3.up * 1.2f;
+                    Runner.Spawn(swordWavePrefab, spawnPos, transform.rotation, Object.InputAuthority);
+                }
+                */
             }
         }
     }
@@ -88,6 +100,10 @@ public class MeleeAttack : NetworkBehaviour
         {
             _canHit = false; // Ngắt ngay lập tức để các Event dư thừa không được chạy
             PerformRaycastHit();
+
+            // [MỚI] Thông báo cho bảng UI để trình demo
+            var ui = FindFirstObjectByType<NetworkStatusUI>();
+            if (ui != null) ui.LogHit("Melee (Predictive)", true);
         }
     }
 
@@ -127,6 +143,10 @@ public class MeleeAttack : NetworkBehaviour
             {
                 // Nếu đang nộ thì đấm đau gấp đôi (20 máu)
                 float finalDamage = (rageSystem != null && rageSystem.IsRaging) ? 20f : 10f;
+                // [LAG COMP PROOF] Hiển thị bằng chứng bù trễ lên Console
+                double rtt = Runner.SessionInfo.Properties.ContainsKey("RTT") ? 0 : Runner.DeltaTime * 1000; // Hoặc dùng Runner.GetPlayerRtt nếu có
+                Debug.Log($"<color=cyan>[LagComp Proof]</color> Melee Hit! Authority: {Object.HasStateAuthority}, Time: {Time.time}");
+                
                 health.TakeDamage(finalDamage, transform.position, Object.InputAuthority);
             }
         }

@@ -231,6 +231,7 @@ MonoBehaviour:
   hitLayers:
     serializedVersion: 2
     m_Bits: 4294967295
+  swordWavePrefab: {fileID: 8450106405971788931, guid: 59ee905d1d32eca48aef9a836b9efa0b, type: 3}
 --- !u!114 &5498324589367948811
 MonoBehaviour:
   m_ObjectHideFlags: 0

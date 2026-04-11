@@ -14,11 +14,15 @@ public class CollectibleOrb : NetworkBehaviour
 
     [Header("Visual Settings")]
     [SerializeField] private MeshRenderer _renderer;
+    public GameObject pickupVFX; // GameObject hoặc Particle sẽ sinh ra khi nhặt
+    public AudioClip pickupSFX;  // Âm thanh khi nhặt
     
     [Networked] private TickTimer _despawnTimer { get; set; }
+    private Rigidbody _rb;
 
     public override void Spawned()
     {
+        _rb = GetComponent<Rigidbody>();
         // Cập nhật màu sắc dựa trên loại (Nếu làm chung 1 prefab)
         UpdateVisuals();
         
@@ -48,24 +52,73 @@ public class CollectibleOrb : NetworkBehaviour
         }
     }
 
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        // Nếu chạm vào đất (Layer Ground) -> Dừng hẳn để không lăn lung tung
+        if (collision.gameObject.layer == LayerMask.NameToLayer("Ground"))
+        {
+            if (_rb != null)
+            {
+                _rb.linearVelocity = Vector3.zero;
+                _rb.angularVelocity = Vector3.zero;
+                _rb.isKinematic = true;
+
+                // Đồng bộ hóa vị trí bay bổng mới sau khi chạm đất
+                var visuals = GetComponent<OrbVisuals>();
+                if (visuals != null) visuals.ResetStartPos();
+            }
+        }
+    }
+
     private void OnTriggerEnter(Collider other)
     {
-        // Chỉ State Authority mới xử lý logic nhặt để tránh duplicate qua mạng
-        if (!Object.HasStateAuthority) return;
-
-        // Kiểm tra xem có phải Player không
+        // 1. Kiểm tra xem thứ chạm vào có phải Player không
         var health = other.GetComponent<HealthSystem>();
         var rage = other.GetComponent<RageSystem>();
 
-        if (health != null || rage != null)
+        if (health == null && rage == null) return;
+
+        // 2. [QUAN TRỌNG] Chỉ xử lý nếu người chạm vào là CHÍNH BẠN (Local Player)
+        // Điều này đảm bảo mỗi người tự nhặt trên máy mình và gửi lệnh xóa lên server
+        bool isLocalPlayer = false;
+        if (health != null && health.Object != null) isLocalPlayer = health.Object.HasInputAuthority;
+        else if (rage != null && rage.Object != null) isLocalPlayer = rage.Object.HasInputAuthority;
+
+        if (!isLocalPlayer) return;
+
+        // 3. Thực hiện hồi chỉ số (Client-side Prediction để mượt hơn)
+        ApplyEffect(health, rage);
+        PlayPickupEffects();
+
+        Debug.Log($"[CollectibleOrb] {type} Orb collected locally by {other.name}, requesting despawn.");
+
+        // 4. Nếu máy mình có quyền (State Authority) thì xóa luôn, nếu không thì Request quyền rồi xóa
+        if (Object.HasStateAuthority)
         {
-            ApplyEffect(health, rage);
-            
-            // Thông báo cho Spawner là Ngọc đã bị nhặt (Nếu cần)
-            Debug.Log($"[CollectibleOrb] {type} Orb collected by {other.name}");
-            
-            // Trả về Object Pool
             Runner.Despawn(Object);
+        }
+        else
+        {
+            // Trong Shared Mode, chúng ta cần State Authority để Despawn
+            // Ta yêu cầu quyền và thực hiện xóa ngay khi có quyền
+            Object.RequestStateAuthority();
+            Runner.Despawn(Object); 
+        }
+    }
+
+    private void PlayPickupEffects()
+    {
+        // Sinh VFX (Nếu có)
+        if (pickupVFX != null)
+        {
+            Instantiate(pickupVFX, transform.position, Quaternion.identity);
+        }
+
+        // Phát SFX (Nếu có)
+        if (pickupSFX != null)
+        {
+            AudioSource.PlayClipAtPoint(pickupSFX, transform.position);
         }
     }
 
